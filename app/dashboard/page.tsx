@@ -26,18 +26,22 @@ export default function DashboardPage() {
 
   const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
-    const onCreated = () => setRefreshKey((k) => k + 1);
-    window.addEventListener('post:created', onCreated);
-    return () => window.removeEventListener('post:created', onCreated);
+    const bump = () => setRefreshKey((k) => k + 1);
+    window.addEventListener('post:created', bump);
+    window.addEventListener('post:updated', bump);
+    return () => {
+      window.removeEventListener('post:created', bump);
+      window.removeEventListener('post:updated', bump);
+    };
   }, []);
 
   const postTotal = typeof postCount === 'bigint' ? Number(postCount) : 0;
   const postContracts = Array.from({ length: postTotal }, (_, idx) => {
-    const id = idx + 1; // posts are 1-indexed in many contracts
+    const id = idx + 1; // IDs start at 1
     return {
       address: CONTRACT_ADDRESS as typeof CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
-      functionName: 'getPost' as const,
+      functionName: 'posts' as const,
       args: [BigInt(id)],
     };
   });
@@ -49,21 +53,88 @@ export default function DashboardPage() {
   } as any) as any;
 
   const postsData = (postsQuery?.data as any[] | undefined)
-    ?.map((res) => (res && res.status === 'success' ? (res.result as any) : undefined))
+    ?.map((res) => {
+      if (res && res.status === 'success') {
+        const r = res.result as any;
+        // Contract returns array [id, profileId, contentCID, timestamp, likeCount, commentCount, tipAmount, isForSale, price, isDeleted]
+        return {
+          id: r[0] as bigint,
+          profileId: r[1] as bigint,
+          contentCID: r[2] as string,
+          timestamp: r[3] as bigint,
+          likeCount: r[4] as bigint,
+          commentCount: r[5] as bigint,
+          tipAmount: r[6] as bigint,
+          isForSale: r[7] as boolean,
+          price: r[8] as bigint,
+          isDeleted: r[9] as boolean,
+        };
+      } else {
+        console.log('❌ Failed post result:', res);
+        return undefined;
+      }
+    })
     .filter(Boolean)
-    .map((r: any) => ({
-      id: r.id as bigint,
-      author: r.author as string,
-      contentCID: r.contentCID as string,
-      timestamp: r.timestamp as bigint,
-      likeCount: r.likeCount as bigint,
-      commentCount: r.commentCount as bigint,
-      isDeleted: r.isDeleted as boolean,
-    }))
-    .filter((p: any) => !!p && !p.isDeleted && typeof p.author === 'string' && p.author !== '0x0000000000000000000000000000000000000000') as Post[] | undefined;
+    .filter((p: any) => !!p && !p.isDeleted) as any[] | undefined;
 
-  const sortedPosts = postsData
-    ? [...postsData].sort((a, b) => Number(b.timestamp - a.timestamp))
+  console.log('📊 PostCount:', postTotal, '| Posts data:', postsData);
+
+  // resolve authors via getProfile(profileId)
+  const uniqueProfileIds = postsData ? Array.from(new Set(postsData.map((p: any) => p.profileId as bigint))) : [];
+  const profileContracts = uniqueProfileIds.map((pid) => ({
+    address: CONTRACT_ADDRESS as typeof CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'getProfile' as const,
+    args: [pid],
+  }));
+  const profilesQuery = useReadContracts({
+    contracts: profileContracts as any,
+    scopeKey: `authors-${uniqueProfileIds.length}-${refreshKey}`,
+    query: { enabled: profileContracts.length > 0 },
+  } as any) as any;
+
+  type ProfileInfo = { owner: string; name?: string };
+  const profileIdToInfo: Record<string, ProfileInfo> = (() => {
+    const map: Record<string, ProfileInfo> = {};
+    const rows = profilesQuery?.data as any[] | undefined;
+    if (rows) {
+      rows.forEach((res, idx) => {
+        if (res && res.status === 'success') {
+          const pr = res.result as any;
+          const pid = String(uniqueProfileIds[idx]);
+          // getProfile returns array [id, owner, name, avatarCID, bioCID, createdAt, socialTokenBalance, totalEarned, totalHires]
+          const owner = Array.isArray(pr) ? pr[1] : (typeof pr?.owner === 'string' ? pr.owner : '');
+          const name = Array.isArray(pr) ? pr[2] : (typeof pr?.name === 'string' ? pr.name : '');
+          if (owner) {
+            console.log(`✅ Mapped profileId ${pid} → owner ${owner}, name ${name}`);
+            map[pid] = { owner, name };
+          } else {
+            console.log(`❌ No owner found for profileId ${pid}, raw:`, pr);
+          }
+        }
+      });
+    }
+    console.log('📝 Final profileIdToInfo map:', map);
+    return map;
+  })();
+
+  const postsWithAuthors = postsData
+    ? postsData.map((p: any) => ({
+        id: p.id as bigint,
+        author: profileIdToInfo[String(p.profileId)]?.owner || '',
+        contentCID: p.contentCID as string,
+        timestamp: p.timestamp as bigint,
+        likeCount: p.likeCount as bigint,
+        commentCount: p.commentCount as bigint,
+        tipAmount: p.tipAmount as bigint | undefined,
+        isForSale: p.isForSale as boolean | undefined,
+        price: p.price as bigint | undefined,
+        isDeleted: p.isDeleted as boolean,
+      })) as Post[]
+    : undefined;
+
+  const sortedPosts = postsWithAuthors
+    ? [...postsWithAuthors].sort((a, b) => Number(b.timestamp - a.timestamp))
     : undefined;
 
   return (
@@ -92,16 +163,17 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   {sortedPosts && sortedPosts.length > 0
                     ? sortedPosts.map((p, idx) => {
-                        const authorStr = typeof p.author === 'string' ? p.author : '';
-                        const authorLabel = authorStr && authorStr.length >= 10
-                          ? `${authorStr.slice(0, 6)}...${authorStr.slice(-4)}`
-                          : authorStr || 'Unknown';
+                        const info = profileIdToInfo[String((p as any).profileId)] as ProfileInfo | undefined;
+                        const ownerAddr = info?.owner || (typeof p.author === 'string' ? p.author : '');
+                        const displayName = (info?.name && info.name.trim().length > 0)
+                          ? info.name
+                          : (ownerAddr ? `${ownerAddr.slice(0, 6)}...${ownerAddr.slice(-4)}` : 'Unknown');
                         const idStr = (p && (p as any).id != null) ? String((p as any).id) : `post`;
                         return (
                           <PostCard
                             key={`${idStr}-${idx}`}
                             post={p}
-                            authorName={authorLabel}
+                            authorName={displayName}
                           />
                         );
                       })
@@ -112,9 +184,10 @@ export default function DashboardPage() {
                             id: BigInt(i),
                             author: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
                             contentCID: `This is a sample post #${i} showcasing the power of decentralized social networks. Join the revolution! 🚀`,
-                            timestamp: BigInt(Math.floor(Date.now() / 1000) - i * 3600),
-                            likeCount: BigInt(Math.floor(Math.random() * 100)),
-                            commentCount: BigInt(Math.floor(Math.random() * 50)),
+                            // Use deterministic, static values to avoid SSR/client hydration mismatch
+                            timestamp: BigInt(1700000000 + i * 3600),
+                            likeCount: BigInt(10 * i),
+                            commentCount: BigInt(5 * i),
                             isDeleted: false,
                           }}
                           authorName={`CyberUser${i}`}

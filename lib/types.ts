@@ -17,7 +17,18 @@ export interface Post {
   timestamp: bigint;
   likeCount: bigint;
   commentCount: bigint;
+  tipAmount?: bigint;
+  isForSale?: boolean;
+  price?: bigint;
   isDeleted: boolean;
+}
+
+export interface Comment {
+  id: bigint;
+  postId: bigint;
+  author: string;
+  contentCID: string;
+  timestamp: bigint;
 }
 
 export interface Hire {

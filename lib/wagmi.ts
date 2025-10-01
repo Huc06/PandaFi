@@ -4,7 +4,6 @@ import type { Chain } from 'wagmi/chains';
 const u2uNebulasTestnet: Chain = {
   id: 2484,
   name: 'U2U Network Nebulas',
-  network: 'u2u-nebulas-testnet',
   nativeCurrency: { name: 'U2U', symbol: 'U2U', decimals: 18 },
   rpcUrls: {
     default: {

@@ -1,4 +1,4 @@
-export const CONTRACT_ADDRESS = '0x1e4adad3bd7fc716c03afad687a7c1433e8e1d3a' as const;
+export const CONTRACT_ADDRESS = '0x3c3bcf8ac2ff69e4d0a1eeb98c1a2c7ba39a27a2' as const;
 
 export const CONTRACT_ABI = [
   {
@@ -86,10 +86,96 @@ export const CONTRACT_ABI = [
   {
     anonymous: false,
     inputs: [
+      { indexed: true, internalType: 'uint256', name: 'postId', type: 'uint256' },
+      { indexed: false, internalType: 'uint256', name: 'commentId', type: 'uint256' },
+      { indexed: false, internalType: 'address', name: 'author', type: 'address' },
+    ],
+    name: 'CommentAdded',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'uint256', name: 'hireId', type: 'uint256' },
+      { indexed: false, internalType: 'uint256', name: 'profileId', type: 'uint256' },
+    ],
+    name: 'HireCompleted',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
       { indexed: true, internalType: 'address', name: 'previousOwner', type: 'address' },
       { indexed: true, internalType: 'address', name: 'newOwner', type: 'address' },
     ],
     name: 'OwnershipTransferred',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'uint256', name: 'hireId', type: 'uint256' },
+      { indexed: false, internalType: 'uint256', name: 'profileId', type: 'uint256' },
+      { indexed: false, internalType: 'address', name: 'hirer', type: 'address' },
+      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+    ],
+    name: 'PlayerHired',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'uint256', name: 'postId', type: 'uint256' },
+      { indexed: false, internalType: 'address', name: 'buyer', type: 'address' },
+      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
+    ],
+    name: 'PostBought',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'uint256', name: 'postId', type: 'uint256' },
+      { indexed: false, internalType: 'uint256', name: 'profileId', type: 'uint256' },
+    ],
+    name: 'PostCreated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'uint256', name: 'postId', type: 'uint256' },
+      { indexed: false, internalType: 'uint256', name: 'price', type: 'uint256' },
+    ],
+    name: 'PostForSale',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'uint256', name: 'postId', type: 'uint256' },
+      { indexed: false, internalType: 'address', name: 'liker', type: 'address' },
+    ],
+    name: 'PostLiked',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'uint256', name: 'postId', type: 'uint256' },
+      { indexed: false, internalType: 'address', name: 'tipper', type: 'address' },
+      { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' },
+    ],
+    name: 'PostTipped',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: 'uint256', name: 'profileId', type: 'uint256' },
+      { indexed: false, internalType: 'address', name: 'owner', type: 'address' },
+    ],
+    name: 'ProfileCreated',
     type: 'event',
   },
   {
@@ -101,6 +187,16 @@ export const CONTRACT_ABI = [
     ],
     name: 'Transfer',
     type: 'event',
+  },
+  {
+    inputs: [
+      { internalType: 'uint256', name: '_postId', type: 'uint256' },
+      { internalType: 'string', name: '_contentCID', type: 'string' },
+    ],
+    name: 'addComment',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
     inputs: [
@@ -120,6 +216,33 @@ export const CONTRACT_ABI = [
     type: 'function',
   },
   {
+    inputs: [{ internalType: 'uint256', name: '_postId', type: 'uint256' }],
+    name: 'buyPost',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'commentCount',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    name: 'comments',
+    outputs: [
+      { internalType: 'uint256', name: 'id', type: 'uint256' },
+      { internalType: 'uint256', name: 'postId', type: 'uint256' },
+      { internalType: 'address', name: 'author', type: 'address' },
+      { internalType: 'string', name: 'contentCID', type: 'string' },
+      { internalType: 'uint256', name: 'timestamp', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [{ internalType: 'uint256', name: '_hireId', type: 'uint256' }],
     name: 'completeHire',
     outputs: [],
@@ -127,7 +250,10 @@ export const CONTRACT_ABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'string', name: '_contentCID', type: 'string' }],
+    inputs: [
+      { internalType: 'uint256', name: '_profileId', type: 'uint256' },
+      { internalType: 'string', name: '_contentCID', type: 'string' },
+    ],
     name: 'createPost',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -145,13 +271,6 @@ export const CONTRACT_ABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'uint256', name: '_id', type: 'uint256' }],
-    name: 'deletePost',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
     inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
     name: 'getApproved',
     outputs: [{ internalType: 'address', name: '', type: 'address' }],
@@ -159,20 +278,18 @@ export const CONTRACT_ABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'uint256', name: '_id', type: 'uint256' }],
-    name: 'getPost',
+    inputs: [{ internalType: 'uint256', name: '_commentId', type: 'uint256' }],
+    name: 'getComment',
     outputs: [
       {
         components: [
           { internalType: 'uint256', name: 'id', type: 'uint256' },
+          { internalType: 'uint256', name: 'postId', type: 'uint256' },
           { internalType: 'address', name: 'author', type: 'address' },
           { internalType: 'string', name: 'contentCID', type: 'string' },
           { internalType: 'uint256', name: 'timestamp', type: 'uint256' },
-          { internalType: 'uint256', name: 'likeCount', type: 'uint256' },
-          { internalType: 'uint256', name: 'commentCount', type: 'uint256' },
-          { internalType: 'bool', name: 'isDeleted', type: 'bool' },
         ],
-        internalType: 'struct ProfileSystem.Post',
+        internalType: 'struct SocialFiProfile.Comment',
         name: '',
         type: 'tuple',
       },
@@ -181,7 +298,54 @@ export const CONTRACT_ABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'uint256', name: '_id', type: 'uint256' }],
+    inputs: [{ internalType: 'uint256', name: '_hireId', type: 'uint256' }],
+    name: 'getHire',
+    outputs: [
+      {
+        components: [
+          { internalType: 'uint256', name: 'id', type: 'uint256' },
+          { internalType: 'uint256', name: 'profileId', type: 'uint256' },
+          { internalType: 'address', name: 'hirer', type: 'address' },
+          { internalType: 'uint256', name: 'duration', type: 'uint256' },
+          { internalType: 'uint256', name: 'amount', type: 'uint256' },
+          { internalType: 'uint256', name: 'createdAt', type: 'uint256' },
+          { internalType: 'bool', name: 'completed', type: 'bool' },
+        ],
+        internalType: 'struct SocialFiProfile.Hire',
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: '_postId', type: 'uint256' }],
+    name: 'getPost',
+    outputs: [
+      {
+        components: [
+          { internalType: 'uint256', name: 'id', type: 'uint256' },
+          { internalType: 'uint256', name: 'profileId', type: 'uint256' },
+          { internalType: 'string', name: 'contentCID', type: 'string' },
+          { internalType: 'uint256', name: 'timestamp', type: 'uint256' },
+          { internalType: 'uint256', name: 'likeCount', type: 'uint256' },
+          { internalType: 'uint256', name: 'commentCount', type: 'uint256' },
+          { internalType: 'uint256', name: 'tipAmount', type: 'uint256' },
+          { internalType: 'bool', name: 'isForSale', type: 'bool' },
+          { internalType: 'uint256', name: 'price', type: 'uint256' },
+          { internalType: 'bool', name: 'isDeleted', type: 'bool' },
+        ],
+        internalType: 'struct SocialFiProfile.Post',
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: '_profileId', type: 'uint256' }],
     name: 'getProfile',
     outputs: [
       {
@@ -196,7 +360,7 @@ export const CONTRACT_ABI = [
           { internalType: 'uint256', name: 'totalEarned', type: 'uint256' },
           { internalType: 'uint256', name: 'totalHires', type: 'uint256' },
         ],
-        internalType: 'struct ProfileSystem.Profile',
+        internalType: 'struct SocialFiProfile.Profile',
         name: '',
         type: 'tuple',
       },
@@ -220,7 +384,7 @@ export const CONTRACT_ABI = [
           { internalType: 'uint256', name: 'totalEarned', type: 'uint256' },
           { internalType: 'uint256', name: 'totalHires', type: 'uint256' },
         ],
-        internalType: 'struct ProfileSystem.Profile[]',
+        internalType: 'struct SocialFiProfile.Profile[]',
         name: '',
         type: 'tuple[]',
       },
@@ -239,6 +403,7 @@ export const CONTRACT_ABI = [
     inputs: [
       { internalType: 'uint256', name: '_profileId', type: 'uint256' },
       { internalType: 'uint256', name: '_duration', type: 'uint256' },
+      { internalType: 'uint256', name: '_ratePerHour', type: 'uint256' },
     ],
     name: 'hirePlayer',
     outputs: [],
@@ -271,7 +436,7 @@ export const CONTRACT_ABI = [
     type: 'function',
   },
   {
-    inputs: [{ internalType: 'uint256', name: '_id', type: 'uint256' }],
+    inputs: [{ internalType: 'uint256', name: '_postId', type: 'uint256' }],
     name: 'likePost',
     outputs: [],
     stateMutability: 'nonpayable',
@@ -310,11 +475,14 @@ export const CONTRACT_ABI = [
     name: 'posts',
     outputs: [
       { internalType: 'uint256', name: 'id', type: 'uint256' },
-      { internalType: 'address', name: 'author', type: 'address' },
+      { internalType: 'uint256', name: 'profileId', type: 'uint256' },
       { internalType: 'string', name: 'contentCID', type: 'string' },
       { internalType: 'uint256', name: 'timestamp', type: 'uint256' },
       { internalType: 'uint256', name: 'likeCount', type: 'uint256' },
       { internalType: 'uint256', name: 'commentCount', type: 'uint256' },
+      { internalType: 'uint256', name: 'tipAmount', type: 'uint256' },
+      { internalType: 'bool', name: 'isForSale', type: 'bool' },
+      { internalType: 'uint256', name: 'price', type: 'uint256' },
       { internalType: 'bool', name: 'isDeleted', type: 'bool' },
     ],
     stateMutability: 'view',
@@ -376,6 +544,16 @@ export const CONTRACT_ABI = [
   },
   {
     inputs: [
+      { internalType: 'uint256', name: '_postId', type: 'uint256' },
+      { internalType: 'uint256', name: '_price', type: 'uint256' },
+    ],
+    name: 'sellPost',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
       { internalType: 'address', name: 'operator', type: 'address' },
       { internalType: 'bool', name: 'approved', type: 'bool' },
     ],
@@ -396,6 +574,16 @@ export const CONTRACT_ABI = [
     name: 'symbol',
     outputs: [{ internalType: 'string', name: '', type: 'string' }],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'uint256', name: '_postId', type: 'uint256' },
+      { internalType: 'uint256', name: '_amount', type: 'uint256' },
+    ],
+    name: 'tipPost',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
   {
