@@ -1,23 +1,55 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, TrendingUp, Coins } from 'lucide-react';
-import { useReadContract } from 'wagmi';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Trophy, TrendingUp, Coins, UserPlus, Briefcase } from 'lucide-react';
+import { useAccount, useReadContract, useWriteContract } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 import type { Profile } from '@/lib/types';
+import { parseUnits, formatUnits } from 'viem';
+import type { Address, Abi } from 'viem';
+import { toast } from 'sonner';
+
+const ERC20_ABI = [
+  {
+    name: 'approve',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { type: 'address', name: 'spender' },
+      { type: 'uint256', name: 'amount' }
+    ],
+    outputs: [{ type: 'bool' }]
+  }
+] as const;
 
 export default function LeaderboardPage() {
+  const { address } = useAccount();
+  const { writeContract } = useWriteContract();
+  const [selectedPlayer, setSelectedPlayer] = useState<Profile | null>(null);
+  const [durationInput, setDurationInput] = useState('');
+  const [rateInput, setRateInput] = useState('');
+  const [isHiring, setIsHiring] = useState(false);
+
   const { data: topPlayers } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'getTopPlayers',
     args: [BigInt(10)],
   });
+
+  const { data: u2uTokenAddress } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'u2uToken',
+  } as any);
 
   const mockPlayers: Profile[] = [
     {
@@ -56,6 +88,51 @@ export default function LeaderboardPage() {
   ];
 
   const players = (topPlayers as Profile[]) || mockPlayers;
+
+  const handleHire = async () => {
+    if (!selectedPlayer || !durationInput || !rateInput || !address || !u2uTokenAddress) {
+      toast.error('Please fill all fields');
+      return;
+    }
+    setIsHiring(true);
+    try {
+      const profileId = selectedPlayer.id;
+      const duration = BigInt(durationInput);
+      const ratePerHour = parseUnits(rateInput, 18);
+      const totalAmount = ratePerHour * duration;
+      const tokenAddr = u2uTokenAddress as Address;
+
+      // Step 1: Approve
+      toast.message('Approving U2U token...');
+      await writeContract({
+        address: tokenAddr,
+        abi: ERC20_ABI as unknown as Abi,
+        functionName: 'approve',
+        args: [CONTRACT_ADDRESS, totalAmount],
+        gas: BigInt(100000),
+      } as any);
+      toast.success('Approval submitted, waiting for confirmation...');
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Step 2: Hire
+      await writeContract({
+        address: CONTRACT_ADDRESS as Address,
+        abi: CONTRACT_ABI as unknown as Abi,
+        functionName: 'hirePlayer',
+        args: [profileId, duration, ratePerHour],
+        gas: BigInt(200000),
+      } as any);
+      toast.success('Hire submitted!');
+      setSelectedPlayer(null);
+      setDurationInput('');
+      setRateInput('');
+    } catch (e: any) {
+      console.error('Hire error:', e);
+      toast.error(e?.message || 'Failed to hire player');
+    } finally {
+      setIsHiring(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0F0F0F] circuit-bg">
@@ -151,6 +228,9 @@ export default function LeaderboardPage() {
                         <th className="px-6 py-4 text-left font-orbitron text-sm font-bold text-[#00FFFF]">
                           HIRES
                         </th>
+                        <th className="px-6 py-4 text-center font-orbitron text-sm font-bold text-[#00FFFF]">
+                          ACTION
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -200,6 +280,16 @@ export default function LeaderboardPage() {
                               {player.totalHires.toString()}
                             </span>
                           </td>
+                          <td className="px-6 py-4">
+                            <Button
+                              size="sm"
+                              onClick={() => setSelectedPlayer(player)}
+                              className="bg-gradient-to-r from-[#FF0080] to-[#00FFFF] hover:from-[#00FFFF] hover:to-[#8AFF00] text-white font-orbitron"
+                            >
+                              <UserPlus className="h-4 w-4 mr-1" />
+                              Hire
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -210,6 +300,98 @@ export default function LeaderboardPage() {
           </div>
         </main>
       </div>
+
+      {/* Hire Dialog */}
+      <Dialog open={!!selectedPlayer} onOpenChange={(open) => !open && setSelectedPlayer(null)}>
+        <DialogContent className="bg-[#1B1B1B] border-[#00FFFF]/30 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-orbitron text-2xl text-[#00FFFF]">HIRE PLAYER</DialogTitle>
+          </DialogHeader>
+          {selectedPlayer && (
+            <div className="space-y-6">
+              {/* Player Info */}
+              <div className="flex items-center gap-4 p-4 bg-[#0F0F0F] rounded-lg border border-[#FF0080]/30">
+                <Avatar className="h-16 w-16 ring-2 ring-[#00FFFF]">
+                  <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedPlayer.owner}`} />
+                  <AvatarFallback className="bg-gradient-to-br from-[#FF0080] to-[#00FFFF] text-white font-orbitron">
+                    {selectedPlayer.name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h3 className="font-orbitron text-xl font-bold text-[#00FFFF]">{selectedPlayer.name}</h3>
+                  <p className="text-xs text-gray-500 font-mono">{selectedPlayer.owner.slice(0, 6)}...{selectedPlayer.owner.slice(-4)}</p>
+                  <div className="flex gap-2 mt-2">
+                    <Badge className="bg-[#FF0080]/20 text-[#FF0080] border-[#FF0080]/50 font-orbitron">
+                      <Coins className="h-3 w-3 mr-1" />
+                      {selectedPlayer.socialTokenBalance.toString()} Tokens
+                    </Badge>
+                    <Badge className="bg-[#8AFF00]/20 text-[#8AFF00] border-[#8AFF00]/50 font-orbitron">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      {selectedPlayer.totalEarned.toString()} Earned
+                    </Badge>
+                    <Badge className="bg-[#00FFFF]/20 text-[#00FFFF] border-[#00FFFF]/50 font-orbitron">
+                      <Briefcase className="h-3 w-3 mr-1" />
+                      {selectedPlayer.totalHires.toString()} Hires
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hire Form */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-orbitron text-gray-400">Duration (hours)</label>
+                  <Input
+                    type="number"
+                    value={durationInput}
+                    onChange={(e) => setDurationInput(e.target.value)}
+                    placeholder="e.g. 10"
+                    className="mt-1 bg-[#0F0F0F] border-[#00FFFF]/30 focus:border-[#00FFFF] text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-orbitron text-gray-400">Rate per Hour (U2U)</label>
+                  <Input
+                    type="text"
+                    value={rateInput}
+                    onChange={(e) => setRateInput(e.target.value.replace(/[^0-9.]/g, ''))}
+                    placeholder="e.g. 0.5"
+                    className="mt-1 bg-[#0F0F0F] border-[#00FFFF]/30 focus:border-[#00FFFF] text-white"
+                  />
+                </div>
+                {durationInput && rateInput && (
+                  <div className="p-3 bg-[#0F0F0F] rounded border border-[#FCEE09]/30">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-400">Total Cost:</span>
+                      <span className="font-orbitron text-lg font-bold text-[#FCEE09]">
+                        {(parseFloat(durationInput) * parseFloat(rateInput)).toFixed(2)} U2U
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedPlayer(null)}
+                  className="flex-1 font-orbitron border-[#FF0080]/30 text-white hover:bg-[#FF0080]/10"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleHire}
+                  disabled={isHiring || !durationInput || !rateInput}
+                  className="flex-1 bg-gradient-to-r from-[#FF0080] to-[#00FFFF] hover:from-[#00FFFF] hover:to-[#8AFF00] text-white font-orbitron disabled:opacity-50"
+                >
+                  {isHiring ? 'Processing...' : 'CONFIRM HIRE'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

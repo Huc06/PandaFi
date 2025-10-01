@@ -169,6 +169,7 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
         abi: ERC20_ABI as unknown as Abi,
         functionName: 'approve',
         args: [CONTRACT_ADDRESS, amountWei],
+        gas: BigInt(100000),
       } as any);
       toast.success('Approval submitted, waiting for confirmation...');
       await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait for confirmation
@@ -180,6 +181,7 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
         abi: CONTRACT_ABI as unknown as Abi,
         functionName: 'tipPost',
         args: [post.id, amountWei],
+        gas: BigInt(150000),
       } as any);
       setTipInput('');
       toast.success('Tip submitted!');
@@ -228,6 +230,7 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
         abi: ERC20_ABI as unknown as Abi,
         functionName: 'approve',
         args: [CONTRACT_ADDRESS, priceWei],
+        gas: BigInt(100000),
       } as any);
       toast.success('Approval submitted, waiting for confirmation...');
       await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait for confirmation
@@ -238,6 +241,7 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
         abi: CONTRACT_ABI as unknown as Abi,
         functionName: 'buyPost',
         args: [post.id],
+        gas: BigInt(200000),
       } as any);
       toast.success('Purchase submitted!');
       window.dispatchEvent(new CustomEvent('post:updated'));
@@ -289,7 +293,7 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
     <Card className="bg-[#1B1B1B] border-[#FF0080]/30 hover:border-[#00FFFF]/50 transition-all">
       <CardContent className="pt-6">
         <div className="flex items-start space-x-4">
-            <Avatar className="h-12 w-12 ring-2 ring-[#00FFFF]/50">
+          <Avatar className="h-12 w-12 ring-2 ring-[#00FFFF]/50">
             <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${authorAddr}`} />
             <AvatarFallback className="bg-[#00FFFF] text-[#0F0F0F] font-orbitron">
               {authorName.slice(0, 2).toUpperCase()}
@@ -381,7 +385,13 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
           <div className="p-3 bg-[#0F0F0F] rounded-lg border border-[#00FFFF]/30 space-y-2">
             <div className="flex items-center justify-between">
               <div className="font-orbitron text-sm text-[#00FFFF] flex items-center"><Tag className="h-4 w-4 mr-1" /> Sell</div>
-              <div className="text-xs text-gray-500">{post.isForSale ? `Price: ${typeof post.price === 'bigint' ? `${formatUnits(post.price, 18)} U2U` : '0 U2U'}` : 'Not for sale'}</div>
+              <div className="text-xs text-gray-500">
+                {post.isForSale ? (
+                  <span className="text-[#8AFF00] font-bold">FOR SALE: {typeof post.price === 'bigint' ? `${formatUnits(post.price, 18)} U2U` : '0 U2U'}</span>
+                ) : (
+                  'Not for sale'
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <input
@@ -396,8 +406,14 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
                   List
                 </Button>
               ) : (
-                <Button size="sm" onClick={handleBuy} disabled={isBuying || !post.isForSale} className="bg-[#8AFF00] text-[#0F0F0F] font-orbitron disabled:opacity-50">
-                  <ShoppingCart className="h-4 w-4 mr-1" /> {isBuying ? 'Buying...' : 'Buy'}
+                <Button 
+                  size="sm" 
+                  onClick={handleBuy} 
+                  disabled={isBuying || !post.isForSale} 
+                  className="bg-[#8AFF00] text-[#0F0F0F] font-orbitron disabled:opacity-50"
+                  title={!post.isForSale ? 'This post is not for sale' : `Buy for ${typeof post.price === 'bigint' ? formatUnits(post.price, 18) : '0'} U2U`}
+                >
+                  <ShoppingCart className="h-4 w-4 mr-1" /> {isBuying ? 'Buying...' : (post.isForSale ? 'Buy Now' : 'Not Available')}
                 </Button>
               )}
             </div>
