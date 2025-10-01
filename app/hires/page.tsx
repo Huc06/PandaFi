@@ -12,13 +12,15 @@ import { useReadContract, useReadContracts } from 'wagmi';
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from '@/lib/contract';
 
 export default function HiresPage() {
-  const { data: hireCountData } = useReadContract({
+  const { data: hireCountData, isLoading: isLoadingCount } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'hireCount',
   });
 
   const hireCount = typeof hireCountData === 'bigint' ? Number(hireCountData) : 0;
+  
+  console.log('📊 Hires Debug:', { hireCountData, hireCount, isLoadingCount });
 
   const hireIdArgs = useMemo(() => {
     return Array.from({ length: hireCount }, (_, i) => ({
@@ -37,25 +39,39 @@ export default function HiresPage() {
     },
   } as any) as any;
   const hiresResults = hiresQuery?.data as any[] | undefined;
+  const isLoadingHires = hiresQuery?.isLoading;
 
   const hires: Hire[] = useMemo(() => {
     if (!hiresResults) return [];
-    return hiresResults
-      .map((res) => (res && res.status === 'success' ? (res.result as any) : undefined))
-      .filter(Boolean)
-      .map((r: any) => ({
-        id: r.id as bigint,
-        profileId: r.profileId as bigint,
-        hirer: r.hirer as string,
-        duration: r.duration as bigint,
-        amount: r.amount as bigint,
-        createdAt: r.createdAt as bigint,
-        completed: r.completed as boolean,
-      }));
+    console.log('📦 Raw hires results:', hiresResults);
+    const mapped = hiresResults
+      .map((res, idx) => {
+        if (res && res.status === 'success') {
+          const r = res.result as any;
+          console.log(`✅ Hire ${idx + 1}:`, r);
+          return {
+            id: r.id as bigint,
+            profileId: r.profileId as bigint,
+            hirer: r.hirer as string,
+            duration: r.duration as bigint,
+            amount: r.amount as bigint,
+            createdAt: r.createdAt as bigint,
+            completed: r.completed as boolean,
+          };
+        } else {
+          console.log(`❌ Failed hire ${idx + 1}:`, res);
+          return undefined;
+        }
+      })
+      .filter(Boolean);
+    console.log('🎯 Mapped hires:', mapped);
+    return mapped as Hire[];
   }, [hiresResults]);
 
   const activeHires = hires.filter((h) => !h.completed);
   const completedHires = hires.filter((h) => h.completed);
+
+  console.log('🔥 Active hires:', activeHires.length, '| Completed:', completedHires.length);
 
   return (
     <div className="min-h-screen bg-[#0F0F0F] circuit-bg">
@@ -76,11 +92,21 @@ export default function HiresPage() {
 
             <Card className="bg-[#1B1B1B] border-[#00FFFF]/30">
               <CardHeader>
-                <CardTitle className="font-orbitron text-[#00FFFF]">ACTIVE HIRES</CardTitle>
+                <CardTitle className="font-orbitron text-[#00FFFF]">ACTIVE HIRES {isLoadingCount || isLoadingHires ? '(Loading...)' : `(${activeHires.length})`}</CardTitle>
               </CardHeader>
               <CardContent>
-                {activeHires.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">No active hires yet.</p>
+                {isLoadingCount || isLoadingHires ? (
+                  <p className="text-gray-400 text-center py-8">Loading hires...</p>
+                ) : hireCount === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400 mb-2">No hires found on contract yet.</p>
+                    <p className="text-xs text-gray-500">Total hires on chain: {hireCount}</p>
+                  </div>
+                ) : activeHires.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400 mb-2">No active hires.</p>
+                    <p className="text-xs text-gray-500">Total hires: {hires.length} (all completed)</p>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {activeHires.map((hire) => (
@@ -120,11 +146,16 @@ export default function HiresPage() {
 
             <Card className="bg-[#1B1B1B] border-[#00FFFF]/30 mt-6">
               <CardHeader>
-                <CardTitle className="font-orbitron text-[#00FFFF]">COMPLETED HIRES</CardTitle>
+                <CardTitle className="font-orbitron text-[#00FFFF]">COMPLETED HIRES {isLoadingHires ? '(Loading...)' : `(${completedHires.length})`}</CardTitle>
               </CardHeader>
               <CardContent>
-                {completedHires.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">No completed hires yet.</p>
+                {isLoadingHires ? (
+                  <p className="text-gray-400 text-center py-8">Loading hires...</p>
+                ) : completedHires.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400 mb-2">No completed hires yet.</p>
+                    <p className="text-xs text-gray-500">Total hires: {hires.length} (all active)</p>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {completedHires.map((hire) => (

@@ -87,7 +87,24 @@ export default function LeaderboardPage() {
     },
   ];
 
-  const players = (topPlayers as Profile[]) || mockPlayers;
+  // Get real profile count to verify profiles exist
+  const { data: profileCountData } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'profileCount',
+  });
+  const profileCount = typeof profileCountData === 'bigint' ? Number(profileCountData) : 0;
+
+  console.log('👥 Leaderboard Debug:', { 
+    topPlayers: topPlayers ? (topPlayers as any).length : 0,
+    profileCount,
+    mockPlayers: mockPlayers.length 
+  });
+
+  // Only use real profiles if they exist, otherwise show mock
+  const players = (topPlayers && (topPlayers as Profile[]).length > 0) 
+    ? (topPlayers as Profile[]) 
+    : (profileCount > 0 ? [] : mockPlayers);
 
   const handleHire = async () => {
     if (!selectedPlayer || !durationInput || !rateInput || !address || !u2uTokenAddress) {
@@ -102,33 +119,57 @@ export default function LeaderboardPage() {
       const totalAmount = ratePerHour * duration;
       const tokenAddr = u2uTokenAddress as Address;
 
+      console.log('🎯 Hiring:', {
+        profileId: String(profileId),
+        duration: String(duration),
+        ratePerHour: formatUnits(ratePerHour, 18),
+        totalAmount: formatUnits(totalAmount, 18),
+      });
+
       // Step 1: Approve
-      toast.message('Approving U2U token...');
-      await writeContract({
+      toast.message('Step 1/2: Approving U2U token...');
+      const approveHash = await writeContract({
         address: tokenAddr,
         abi: ERC20_ABI as unknown as Abi,
         functionName: 'approve',
         args: [CONTRACT_ADDRESS, totalAmount],
         gas: BigInt(100000),
       } as any);
-      toast.success('Approval submitted, waiting for confirmation...');
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      console.log('✅ Approve tx:', approveHash);
+      toast.success('Approval submitted! Waiting 5s for confirmation...');
+      await new Promise((resolve) => setTimeout(resolve, 5000)); // Increase wait time
 
       // Step 2: Hire
-      await writeContract({
+      toast.message('Step 2/2: Hiring player...');
+      const hireHash = await writeContract({
         address: CONTRACT_ADDRESS as Address,
         abi: CONTRACT_ABI as unknown as Abi,
         functionName: 'hirePlayer',
         args: [profileId, duration, ratePerHour],
-        gas: BigInt(200000),
+        gas: BigInt(250000), // Increase gas limit
       } as any);
-      toast.success('Hire submitted!');
+      console.log('✅ Hire tx:', hireHash);
+      toast.success('Hire transaction submitted! Check Hires page in a moment.');
+      
+      // Wait a bit before closing dialog
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       setSelectedPlayer(null);
       setDurationInput('');
       setRateInput('');
     } catch (e: any) {
-      console.error('Hire error:', e);
-      toast.error(e?.message || 'Failed to hire player');
+      console.error('❌ Hire error:', e);
+      const errorMsg = e?.shortMessage || e?.message || 'Transaction failed';
+      
+      // Parse common errors
+      if (errorMsg.includes('insufficient')) {
+        toast.error('Insufficient U2U balance or not enough approved tokens');
+      } else if (errorMsg.includes('user rejected') || errorMsg.includes('User denied')) {
+        toast.error('Transaction rejected by user');
+      } else if (errorMsg.includes('Profile does not exist')) {
+        toast.error('Player profile not found on contract');
+      } else {
+        toast.error(`Failed: ${errorMsg.slice(0, 100)}`);
+      }
     } finally {
       setIsHiring(false);
     }
@@ -151,6 +192,13 @@ export default function LeaderboardPage() {
               <p className="text-gray-400 text-sm">
                 Top performers in the decentralized network
               </p>
+              {profileCount === 0 && (
+                <div className="mt-4 p-3 bg-[#FF0080]/10 border border-[#FF0080]/30 rounded-lg">
+                  <p className="text-[#FF0080] text-sm font-orbitron">
+                    ⚠️ No profiles on contract yet. Create your profile first to enable hiring!
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -284,7 +332,9 @@ export default function LeaderboardPage() {
                             <Button
                               size="sm"
                               onClick={() => setSelectedPlayer(player)}
-                              className="bg-gradient-to-r from-[#FF0080] to-[#00FFFF] hover:from-[#00FFFF] hover:to-[#8AFF00] text-white font-orbitron"
+                              disabled={profileCount === 0}
+                              className="bg-gradient-to-r from-[#FF0080] to-[#00FFFF] hover:from-[#00FFFF] hover:to-[#8AFF00] text-white font-orbitron disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={profileCount === 0 ? 'No profiles on contract yet' : 'Hire this player'}
                             >
                               <UserPlus className="h-4 w-4 mr-1" />
                               Hire
