@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Image, Send } from 'lucide-react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import type { Address, Abi } from 'viem';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 import { toast } from 'sonner';
 
@@ -14,7 +15,13 @@ export function CreatePost() {
   const { address } = useAccount();
   const [content, setContent] = useState('');
   const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isSuccess) {
+      window.dispatchEvent(new CustomEvent('post:created'));
+    }
+  }, [isSuccess]);
 
   const handleSubmit = async () => {
     if (!content.trim()) {
@@ -24,13 +31,13 @@ export function CreatePost() {
 
     try {
       writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: CONTRACT_ABI,
+        address: CONTRACT_ADDRESS as Address,
+        abi: CONTRACT_ABI as unknown as Abi,
         functionName: 'createPost',
         args: [content],
-      });
+      } as any);
       
-      toast.success('Post created successfully!');
+      toast.success('Post submitted! Waiting for confirmation...');
       setContent('');
     } catch (error) {
       toast.error('Failed to create post');

@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
 import { CreatePost } from '@/components/posts/create-post';
 import { PostCard } from '@/components/posts/post-card';
 import { ProfileCard } from '@/components/profile/profile-card';
-import { useReadContract } from 'wagmi';
+import { useReadContract, useReadContracts } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 import type { Post, Profile } from '@/lib/types';
 
@@ -23,6 +23,48 @@ export default function DashboardPage() {
     functionName: 'getTopPlayers',
     args: [BigInt(5)],
   });
+
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    const onCreated = () => setRefreshKey((k) => k + 1);
+    window.addEventListener('post:created', onCreated);
+    return () => window.removeEventListener('post:created', onCreated);
+  }, []);
+
+  const postTotal = typeof postCount === 'bigint' ? Number(postCount) : 0;
+  const postContracts = Array.from({ length: postTotal }, (_, idx) => {
+    const id = idx + 1; // posts are 1-indexed in many contracts
+    return {
+      address: CONTRACT_ADDRESS as typeof CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: 'getPost' as const,
+      args: [BigInt(id)],
+    };
+  });
+
+  const postsQuery = useReadContracts({
+    contracts: postContracts as any,
+    scopeKey: `posts-${postTotal}-${refreshKey}`,
+    query: { enabled: postContracts.length > 0, refetchOnWindowFocus: false },
+  } as any) as any;
+
+  const postsData = (postsQuery?.data as any[] | undefined)
+    ?.map((res) => (res && res.status === 'success' ? (res.result as any) : undefined))
+    .filter(Boolean)
+    .map((r: any) => ({
+      id: r.id as bigint,
+      author: r.author as string,
+      contentCID: r.contentCID as string,
+      timestamp: r.timestamp as bigint,
+      likeCount: r.likeCount as bigint,
+      commentCount: r.commentCount as bigint,
+      isDeleted: r.isDeleted as boolean,
+    }))
+    .filter((p: any) => !!p && !p.isDeleted && typeof p.author === 'string' && p.author !== '0x0000000000000000000000000000000000000000') as Post[] | undefined;
+
+  const sortedPosts = postsData
+    ? [...postsData].sort((a, b) => Number(b.timestamp - a.timestamp))
+    : undefined;
 
   return (
     <div className="min-h-screen bg-[#0F0F0F] circuit-bg">
@@ -48,21 +90,36 @@ export default function DashboardPage() {
                 <CreatePost />
 
                 <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <PostCard
-                      key={i}
-                      post={{
-                        id: BigInt(i),
-                        author: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
-                        contentCID: `This is a sample post #${i} showcasing the power of decentralized social networks. Join the revolution! 🚀`,
-                        timestamp: BigInt(Date.now() / 1000 - i * 3600),
-                        likeCount: BigInt(Math.floor(Math.random() * 100)),
-                        commentCount: BigInt(Math.floor(Math.random() * 50)),
-                        isDeleted: false,
-                      }}
-                      authorName={`CyberUser${i}`}
-                    />
-                  ))}
+                  {sortedPosts && sortedPosts.length > 0
+                    ? sortedPosts.map((p, idx) => {
+                        const authorStr = typeof p.author === 'string' ? p.author : '';
+                        const authorLabel = authorStr && authorStr.length >= 10
+                          ? `${authorStr.slice(0, 6)}...${authorStr.slice(-4)}`
+                          : authorStr || 'Unknown';
+                        const idStr = (p && (p as any).id != null) ? String((p as any).id) : `post`;
+                        return (
+                          <PostCard
+                            key={`${idStr}-${idx}`}
+                            post={p}
+                            authorName={authorLabel}
+                          />
+                        );
+                      })
+                    : [1, 2, 3, 4, 5].map((i) => (
+                        <PostCard
+                          key={i}
+                          post={{
+                            id: BigInt(i),
+                            author: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+                            contentCID: `This is a sample post #${i} showcasing the power of decentralized social networks. Join the revolution! 🚀`,
+                            timestamp: BigInt(Math.floor(Date.now() / 1000) - i * 3600),
+                            likeCount: BigInt(Math.floor(Math.random() * 100)),
+                            commentCount: BigInt(Math.floor(Math.random() * 50)),
+                            isDeleted: false,
+                          }}
+                          authorName={`CyberUser${i}`}
+                        />
+                      ))}
                 </div>
               </div>
 
@@ -87,7 +144,7 @@ export default function DashboardPage() {
                         name: `CyberElite${i}`,
                         avatarCID: '',
                         bioCID: 'Elite player in the metaverse',
-                        createdAt: BigInt(Date.now() / 1000),
+                        createdAt: BigInt(Math.floor(Date.now() / 1000)),
                         socialTokenBalance: BigInt(1000 * i),
                         totalEarned: BigInt(5000 * i),
                         totalHires: BigInt(10 * i),

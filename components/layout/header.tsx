@@ -12,13 +12,14 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           <Link href="/dashboard" className="flex items-center space-x-2">
             <div className="relative">
-              <Zap className="h-8 w-8 text-[#FF0080]" fill="#FF0080" />
-              <div className="absolute inset-0 animate-ping">
-                <Zap className="h-8 w-8 text-[#FF0080] opacity-20" fill="#FF0080" />
-              </div>
+              <img
+                src="Pandafi.png"
+                alt="Panda Icon"
+                className="h-8 w-8"
+              />
             </div>
             <span className="font-orbitron text-2xl font-bold glow-pink">
-              SOCIAL<span className="text-[#00FFFF]">FI</span>
+              Panda<span className="text-[#00FFFF]">FI</span>
             </span>
           </Link>
 
