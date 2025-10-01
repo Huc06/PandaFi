@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 15 15 15;
+    --foreground: 255 255 255;
+    --card: 27 27 27;
+    --card-foreground: 255 255 255;
+    --popover: 27 27 27;
+    --popover-foreground: 255 255 255;
+    --primary: 255 0 128;
+    --primary-foreground: 255 255 255;
+    --secondary: 0 255 255;
+    --secondary-foreground: 15 15 15;
+    --muted: 39 39 39;
+    --muted-foreground: 163 163 163;
+    --accent: 138 255 0;
+    --accent-foreground: 15 15 15;
+    --destructive: 255 0 128;
+    --destructive-foreground: 255 255 255;
+    --border: 39 39 39;
+    --input: 39 39 39;
+    --ring: 255 0 128;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Cyberpunk Glow Effects */
+.glow-pink {
+  text-shadow: 0 0 10px rgba(255, 0, 128, 0.8), 0 0 20px rgba(255, 0, 128, 0.6), 0 0 30px rgba(255, 0, 128, 0.4);
+}
+
+.glow-cyan {
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.6), 0 0 30px rgba(0, 255, 255, 0.4);
+}
+
+.glow-green {
+  text-shadow: 0 0 10px rgba(138, 255, 0, 0.8), 0 0 20px rgba(138, 255, 0, 0.6), 0 0 30px rgba(138, 255, 0, 0.4);
+}
+
+.glow-yellow {
+  text-shadow: 0 0 10px rgba(252, 238, 9, 0.8), 0 0 20px rgba(252, 238, 9, 0.6), 0 0 30px rgba(252, 238, 9, 0.4);
+}
+
+.border-glow-pink {
+  box-shadow: 0 0 10px rgba(255, 0, 128, 0.5), inset 0 0 10px rgba(255, 0, 128, 0.2);
+}
+
+.border-glow-cyan {
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2);
+}
+
+.border-glow-green {
+  box-shadow: 0 0 10px rgba(138, 255, 0, 0.5), inset 0 0 10px rgba(138, 255, 0, 0.2);
+}
+
+/* Glitch Effect */
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+.glitch {
+  animation: glitch 0.3s infinite;
+}
+
+/* Circuit Pattern Background */
+.circuit-bg {
+  background-image: 
+    linear-gradient(90deg, rgba(255, 0, 128, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Neon Border Animation */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(255, 0, 128, 0.5), 0 0 10px rgba(255, 0, 128, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(255, 0, 128, 0.8), 0 0 20px rgba(255, 0, 128, 0.5), 0 0 30px rgba(255, 0, 128, 0.3);
+  }
+}
+
+.neon-border {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* Holographic Effect */
+.holographic {
+  background: linear-gradient(
+    45deg,
+    rgba(255, 0, 128, 0.1),
+    rgba(0, 255, 255, 0.1),
+    rgba(138, 255, 0, 0.1),
+    rgba(252, 238, 9, 0.1)
+  );
+  background-size: 400% 400%;
+  animation: holographic-shift 10s ease infinite;
+}
+
+@keyframes holographic-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Scanline Effect */
+.scanlines {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanlines::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(0, 255, 255, 0.05) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1B1B1B;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #FF0080, #00FFFF);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #00FFFF, #8AFF00);
+}
