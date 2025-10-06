@@ -27,6 +27,25 @@ const ERC20_ABI = [
       { type: 'uint256', name: 'amount' }
     ],
     outputs: [{ type: 'bool' }]
+  },
+  {
+    name: 'allowance',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { type: 'address', name: 'owner' },
+      { type: 'address', name: 'spender' }
+    ],
+    outputs: [{ type: 'uint256' }]
+  },
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { type: 'address', name: 'account' }
+    ],
+    outputs: [{ type: 'uint256' }]
   }
 ] as const;
 
@@ -49,6 +68,22 @@ export default function LeaderboardPage() {
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'u2uToken',
+  } as any);
+
+  // Get U2U balance
+  const { data: u2uBalance } = useReadContract({
+    address: u2uTokenAddress as Address,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+  } as any);
+
+  // Get current allowance
+  const { data: currentAllowance } = useReadContract({
+    address: u2uTokenAddress as Address,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: address && u2uTokenAddress ? [address, CONTRACT_ADDRESS] : undefined,
   } as any);
 
   const mockPlayers: Profile[] = [
@@ -119,25 +154,28 @@ export default function LeaderboardPage() {
       const totalAmount = ratePerHour * duration;
       const tokenAddr = u2uTokenAddress as Address;
 
-      console.log('🎯 Hiring:', {
-        profileId: String(profileId),
-        duration: String(duration),
-        ratePerHour: formatUnits(ratePerHour, 18),
-        totalAmount: formatUnits(totalAmount, 18),
-      });
+      if (u2uBalance && (u2uBalance as bigint) < totalAmount) {
+        toast.error(`Insufficient U2U balance. Need ${formatUnits(totalAmount, 18)} U2U`);
+        return;
+      }
 
-      // Step 1: Approve
-      toast.message('Step 1/2: Approving U2U token...');
-      const approveHash = await writeContract({
-        address: tokenAddr,
-        abi: ERC20_ABI as unknown as Abi,
-        functionName: 'approve',
-        args: [CONTRACT_ADDRESS, totalAmount],
-        gas: BigInt(100000),
-      } as any);
-      console.log('✅ Approve tx:', approveHash);
-      toast.success('Approval submitted! Waiting 5s for confirmation...');
-      await new Promise((resolve) => setTimeout(resolve, 5000)); // Increase wait time
+      // Step 1: Check current allowance first
+      if (currentAllowance && (currentAllowance as bigint) >= totalAmount) {
+        toast.success('Already approved! Proceeding to hire...');
+      } else {
+        // Step 1: Approve
+        toast.message('Step 1/2: Approving U2U token...');
+        
+        const approveHash = await writeContract({
+          address: tokenAddr,
+          abi: ERC20_ABI as unknown as Abi,
+          functionName: 'approve',
+          args: [CONTRACT_ADDRESS, totalAmount],
+          gas: BigInt(100000),
+        } as any);
+        toast.success('Approval submitted! Waiting 5s for confirmation...');
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
 
       // Step 2: Hire
       toast.message('Step 2/2: Hiring player...');
@@ -146,9 +184,8 @@ export default function LeaderboardPage() {
         abi: CONTRACT_ABI as unknown as Abi,
         functionName: 'hirePlayer',
         args: [profileId, duration, ratePerHour],
-        gas: BigInt(250000), // Increase gas limit
+        gas: BigInt(250000),
       } as any);
-      console.log('✅ Hire tx:', hireHash);
       toast.success('Hire transaction submitted! Check Hires page in a moment.');
       
       // Wait a bit before closing dialog
@@ -157,7 +194,6 @@ export default function LeaderboardPage() {
       setDurationInput('');
       setRateInput('');
     } catch (e: any) {
-      console.error('❌ Hire error:', e);
       const errorMsg = e?.shortMessage || e?.message || 'Transaction failed';
       
       // Parse common errors

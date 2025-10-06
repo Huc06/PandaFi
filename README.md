@@ -211,6 +211,15 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### Configuration
 
 1. **Add U2U Network to MetaMask**
+
+   **U2U Mainnet** (Production):
+   - Network Name: `U2U Solaris Mainnet`
+   - RPC URL: `https://rpc-mainnet.uniultra.xyz`
+   - Chain ID: `39`
+   - Currency Symbol: `U2U`
+   - Block Explorer: `https://u2uscan.xyz`
+
+   **U2U Testnet** (Development):
    - Network Name: `U2U Network Nebulas`
    - RPC URL: `https://rpc-nebulas-testnet.u2u.xyz`
    - Chain ID: `2484`
