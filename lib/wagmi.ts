@@ -38,18 +38,12 @@ const u2uNebulasTestnet: Chain = {
       webSocket: ['wss://ws-nebulas-testnet.u2u.xyz'],
     },
   },
-  blockExplorers: {
-    default: {
-      name: 'U2U Testnet Explorer',
-      url: 'https://testnet.u2uscan.xyz',
-    },
-  },
   testnet: true,
 };
 
 export const config = getDefaultConfig({
   appName: 'SocialFi dApp',
-  projectId: 'YOUR_PROJECT_ID',
-  chains: [u2uMainnet, u2uNebulasTestnet],
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
+  chains: [u2uMainnet],
   ssr: false,
 });

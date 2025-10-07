@@ -19,7 +19,7 @@
 
 ## 🚀 Overview
 
-**PandaFi** is a fully decentralized SocialFi platform built on the **U2U Network Nebulas Testnet**, combining the best of social media with DeFi mechanics. Users can create profiles as NFTs, monetize content, hire talent, and engage in real-time peer-to-peer communication—all powered by blockchain technology.
+**PandaFi** is a fully decentralized SocialFi platform built on the **U2U Solaris Mainnet**, combining the best of social media with DeFi mechanics. Users can create profiles as NFTs, tokenize posts, monetize content, hire talent, and engage in real-time peer-to-peer communication—all powered by blockchain technology.
 
 ### 🎯 Problem We're Solving
 
@@ -135,9 +135,9 @@ Frontend Listens → Update UI → Show Toast
 - 🔒 **OpenZeppelin** - Audited contract libraries
 
 **Blockchain**
-- 🌌 **U2U Network Nebulas Testnet** (ChainID: 2484)
-- 🚀 RPC: `https://rpc-nebulas-testnet.u2u.xyz`
-- 🔍 Explorer: `https://testnet.u2uscan.xyz`
+- 🌌 **U2U Solaris Mainnet** (ChainID: 39)
+- 🚀 RPC: `https://rpc-mainnet.uniultra.xyz`
+- 🔍 Explorer: `https://u2uscan.xyz`
 
 ### Contract Architecture
 
@@ -162,7 +162,8 @@ PandaFiContract (ERC721)
     └── getHire() - Query hire details
 ```
 
-**Contract Address**: `0x3c3bcf8ac2ff69e4d0a1eeb98c1a2c7ba39a27a2`
+**Contract Address**: `0x95691fD90c9c28898912906C19BCc6569A736762`
+**Payment Token (u2uToken)**: resolved on-chain via `u2uToken()`
 
 ---
 
@@ -251,10 +252,12 @@ Dashboard → Type post content → Click "POST"
 → Confirm transaction → Post appears on feed
 ```
 
-### 2. Monetizing Content
+### 2. Monetizing Content (Tokenized)
 ```
-Profile → Select post → Set price → Click "List for Sale"
-→ Post becomes tradeable NFT
+Profile → Select post →
+  - List (U2U): set Price (U2U) → List (U2U)
+  - List Tokens: set Token price (U2U) + Amount → List Tokens → buyers use Buy Tokens
+  - List Post w/ Tokens: set Amount (post tokens) → List Post w/ Tokens → buyers use Buy w/ Tokens
 ```
 
 ### 3. Tipping Creators
@@ -263,11 +266,11 @@ Feed → View post → Enter tip amount → Click "Send"
 → Approve U2U token → Confirm tip transaction
 ```
 
-### 4. Hiring Talent
+### 4. Hiring Talent (U2U ERC20)
 ```
 Leaderboard → Select player → Click "Hire"
 → Enter duration & rate → Confirm hire
-→ Auto-approve U2U token → Submit hire contract
+→ Approve U2U token (auto) → Submit hire contract
 ```
 
 ### 5. P2P Messaging

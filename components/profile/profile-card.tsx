@@ -7,6 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Briefcase, Coins, TrendingUp } from 'lucide-react';
 import type { Profile } from '@/lib/types';
+import { useState } from 'react';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import type { Abi, Address } from 'viem';
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from '@/lib/contract';
+import { toast } from 'sonner';
 
 interface ProfileCardProps {
   profile: Profile;
@@ -14,6 +19,68 @@ interface ProfileCardProps {
 }
 
 export function ProfileCard({ profile, onHire }: ProfileCardProps) {
+  const { address } = useAccount();
+  const [durationHours, setDurationHours] = useState('');
+  const [ratePerHourU2U, setRatePerHourU2U] = useState('');
+  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  const { data: u2uTokenAddress } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'u2uToken',
+  } as any);
+
+  const handleHire = async () => {
+    if (!durationHours.trim() || !ratePerHourU2U.trim()) {
+      toast.error('Enter duration and rate');
+      return;
+    }
+    try {
+      const duration = BigInt(durationHours); // hours
+      // Rate per hour in whole U2U (frontend currently uses integers)
+      const ratePerHour = BigInt(ratePerHourU2U) * (BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10) * BigInt(10));
+      const totalCost = duration * ratePerHour;
+      if (!u2uTokenAddress) {
+        toast.error('U2U token not resolved');
+        return;
+      }
+      // Approve U2U total cost first
+      await writeContract({
+        address: u2uTokenAddress as Address,
+        abi: [
+          {
+            name: 'approve',
+            type: 'function',
+            stateMutability: 'nonpayable',
+            inputs: [
+              { type: 'address', name: 'spender' },
+              { type: 'uint256', name: 'amount' },
+            ],
+            outputs: [{ type: 'bool' }],
+          },
+        ] as unknown as Abi,
+        functionName: 'approve',
+        args: [CONTRACT_ADDRESS, totalCost],
+      } as any);
+      // Small delay to let wallet process approval
+      await new Promise((r) => setTimeout(r, 2000));
+      writeContract({
+        address: CONTRACT_ADDRESS as Address,
+        abi: CONTRACT_ABI as unknown as Abi,
+        functionName: 'hirePlayer',
+        args: [profile.id, duration, ratePerHour],
+      } as any);
+      toast.message('Submitting hire...');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to hire');
+    }
+  };
+
+  if (isSuccess) {
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('post:updated'));
+    toast.success('Hire submitted');
+  }
+
   return (
     <Card className="bg-[#1B1B1B] border-[#00FFFF]/30 hover:border-[#FF0080]/50 transition-all neon-border overflow-hidden">
       <div className="h-24 bg-gradient-to-r from-[#FF0080]/20 via-[#00FFFF]/20 to-[#8AFF00]/20 holographic" />
@@ -53,15 +120,33 @@ export function ProfileCard({ profile, onHire }: ProfileCardProps) {
             </div>
           </div>
 
-          {onHire && (
+          <div className="w-full mt-4 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={durationHours}
+                onChange={(e) => setDurationHours(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="Duration (hours)"
+                className="bg-[#0F0F0F] border border-[#00FFFF]/30 rounded px-2 py-1 text-sm"
+              />
+              <input
+                value={ratePerHourU2U}
+                onChange={(e) => setRatePerHourU2U(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="Rate/hr (U2U)"
+                className="bg-[#0F0F0F] border border-[#00FFFF]/30 rounded px-2 py-1 text-sm"
+              />
+            </div>
+            {durationHours && ratePerHourU2U ? (
+              <p className="text-xs text-gray-500">Estimated total: {String(BigInt(durationHours) * BigInt(ratePerHourU2U))} U2U</p>
+            ) : null}
             <Button
-              onClick={onHire}
-              className="w-full mt-4 bg-gradient-to-r from-[#FF0080] to-[#00FFFF] hover:from-[#00FFFF] hover:to-[#8AFF00] text-white font-orbitron font-bold"
+              onClick={onHire ? onHire : handleHire}
+              disabled={isPending || isConfirming}
+              className="w-full bg-gradient-to-r from-[#FF0080] to-[#00FFFF] hover:from-[#00FFFF] hover:to-[#8AFF00] text-white font-orbitron font-bold disabled:opacity-50"
             >
               <Briefcase className="h-4 w-4 mr-2" />
-              HIRE PLAYER
+              {isPending || isConfirming ? 'HIRING...' : 'HIRE PLAYER'}
             </Button>
-          )}
+          </div>
         </div>
       </CardContent>
     </Card>

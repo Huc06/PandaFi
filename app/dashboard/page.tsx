@@ -56,8 +56,9 @@ export default function DashboardPage() {
     ?.map((res) => {
       if (res && res.status === 'success') {
         const r = res.result as any;
-        // Contract returns array [id, profileId, contentCID, timestamp, likeCount, commentCount, tipAmount, isForSale, price, isDeleted]
-        return {
+        // New ABI may add fields: postToken, tokenPrice, tokensForSale, isForSaleInPostToken, priceInPostToken
+        // Backward compatible mapping by index
+        const base = {
           id: r[0] as bigint,
           profileId: r[1] as bigint,
           contentCID: r[2] as string,
@@ -68,7 +69,15 @@ export default function DashboardPage() {
           isForSale: r[7] as boolean,
           price: r[8] as bigint,
           isDeleted: r[9] as boolean,
-        };
+        } as any;
+        if (Array.isArray(r) && r.length >= 15) {
+          base.postToken = r[10] as string;
+          base.tokenPrice = r[11] as bigint;
+          base.tokensForSale = r[12] as bigint;
+          base.isForSaleInPostToken = r[13] as boolean;
+          base.priceInPostToken = r[14] as bigint;
+        }
+        return base;
       } else {
         console.log('❌ Failed post result:', res);
         return undefined;

@@ -6,10 +6,13 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Coins, TrendingUp } from 'lucide-react';
+import { Briefcase, Coins, TrendingUp, CheckCircle2 } from 'lucide-react';
 import type { Hire } from '@/lib/types';
-import { useReadContract, useReadContracts } from 'wagmi';
+import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from '@/lib/contract';
+import type { Abi, Address } from 'viem';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export default function HiresPage() {
   const { data: hireCountData, isLoading: isLoadingCount } = useReadContract({
@@ -70,6 +73,29 @@ export default function HiresPage() {
 
   const activeHires = hires.filter((h) => !h.completed);
   const completedHires = hires.filter((h) => h.completed);
+  // Complete hire wiring
+  const { writeContract, data: txHash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  const [streamerById, setStreamerById] = React.useState<Record<string, string>>({});
+  const onChangeStreamer = (id: bigint, v: string) => setStreamerById((m) => ({ ...m, [id.toString()]: v }));
+  const handleComplete = async (hire: Hire) => {
+    const streamer = (streamerById[hire.id.toString()] || '').trim();
+    if (!streamer) return toast.error('Enter streamer address');
+    try {
+      writeContract({
+        address: CONTRACT_ADDRESS as Address,
+        abi: CONTRACT_ABI as unknown as Abi,
+        functionName: 'completeHire',
+        args: [hire.id, streamer as Address],
+      } as any);
+      toast.message('Submitting completion...');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to complete hire');
+    }
+  };
+  if (isSuccess) {
+    toast.success('Hire completion submitted');
+  }
 
   console.log('🔥 Active hires:', activeHires.length, '| Completed:', completedHires.length);
 
@@ -110,8 +136,9 @@ export default function HiresPage() {
                 ) : (
                   <div className="space-y-4">
                     {activeHires.map((hire) => (
-                      <div key={hire.id.toString()} className="flex items-center justify-between p-4 rounded-lg border border-[#FF0080]/30 bg-[#0F0F0F]/50">
-                        <div className="flex items-center space-x-3">
+                      <div key={hire.id.toString()} className="p-4 rounded-lg border border-[#FF0080]/30 bg-[#0F0F0F]/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
                           <Avatar className="h-10 w-10">
                             <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${hire.hirer}`} />
                             <AvatarFallback className="bg-[#00FFFF] text-[#0F0F0F] font-orbitron">
@@ -122,8 +149,8 @@ export default function HiresPage() {
                             <p className="font-orbitron font-bold">Hire #{hire.id.toString()}</p>
                             <p className="text-xs text-gray-500 font-mono">By {hire.hirer.slice(0, 6)}...{hire.hirer.slice(-4)}</p>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
+                          </div>
+                          <div className="flex items-center gap-2">
                           <Badge className="bg-[#FF0080]/20 text-[#FF0080] border-[#FF0080]/50 font-orbitron">
                             <Coins className="h-3 w-3 mr-1" />
                             {hire.amount.toString()}
@@ -136,6 +163,24 @@ export default function HiresPage() {
                             <Briefcase className="h-3 w-3 mr-1" />
                             {hire.completed ? 'COMPLETED' : 'ACTIVE'}
                           </Badge>
+                          </div>
+                        </div>
+                        {/* Complete action */}
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 items-center">
+                          <input
+                            value={streamerById[hire.id.toString()] || ''}
+                            onChange={(e) => onChangeStreamer(hire.id, e.target.value)}
+                            placeholder="Streamer address (0x...)"
+                            className="bg-[#0F0F0F] border border-[#00FFFF]/30 rounded px-2 py-1 text-sm font-mono"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleComplete(hire)}
+                            disabled={isPending || isConfirming || !(streamerById[hire.id.toString()] || '').trim()}
+                            className="bg-[#FF0080] text-white font-orbitron disabled:opacity-50"
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-1" /> {isPending || isConfirming ? 'COMPLETING...' : 'COMPLETE HIRE'}
+                          </Button>
                         </div>
                       </div>
                     ))}

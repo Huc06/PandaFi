@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Heart, MessageCircle, Share2, Trash2, ShoppingCart, DollarSign, Tag } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Trash2, ShoppingCart, DollarSign, Tag, Coins } from 'lucide-react';
 import type { Post } from '@/lib/types';
 import { useAccount, useWaitForTransactionReceipt, useWriteContract, useReadContract, useReadContracts } from 'wagmi';
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from '@/lib/contract';
@@ -52,6 +52,10 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
   const [localComments, setLocalComments] = useState<Comment[]>([]);
   const [tipInput, setTipInput] = useState('');
   const [priceInput, setPriceInput] = useState('');
+  const [tokenPriceInput, setTokenPriceInput] = useState('');
+  const [tokenAmountInput, setTokenAmountInput] = useState('');
+  const [postPriceInTokenInput, setPostPriceInTokenInput] = useState('');
+  const [isTokenOps, setIsTokenOps] = useState(false);
   const [showFetchedOnce, setShowFetchedOnce] = useState(false);
   const [isTipping, setIsTipping] = useState(false);
   const [isBuying, setIsBuying] = useState(false);
@@ -211,6 +215,116 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
       window.dispatchEvent(new CustomEvent('post:updated'));
     } catch (e) {
       toast.error('Failed to list post');
+    }
+  };
+
+  const handleSetPostTokenForSale = async () => {
+    const hasFn = ((CONTRACT_ABI as unknown) as any[]).some((f: any) => f.name === 'setPostTokenForSale');
+    if (!hasFn) return toast.info('Contract has no setPostTokenForSale');
+    const priceTxt = tokenPriceInput.trim();
+    const amountTxt = tokenAmountInput.trim();
+    if (!priceTxt || !amountTxt) return;
+    try {
+      const priceWei = parseUnits(priceTxt, 18);
+      const amount = BigInt(amountTxt);
+      await writeContract({
+        address: CONTRACT_ADDRESS as Address,
+        abi: CONTRACT_ABI as unknown as Abi,
+        functionName: 'setPostTokenForSale',
+        args: [post.id, priceWei, amount],
+      } as any);
+      toast.success('Post tokens listed for sale');
+      window.dispatchEvent(new CustomEvent('post:updated'));
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to list post tokens');
+    }
+  };
+
+  const handleBuyPostTokens = async () => {
+    const hasFn = ((CONTRACT_ABI as unknown) as any[]).some((f: any) => f.name === 'buyPostTokens');
+    if (!hasFn) return toast.info('Contract has no buyPostTokens');
+    const amountTxt = tokenAmountInput.trim();
+    if (!amountTxt || !address || !u2uTokenAddress) return;
+    setIsTokenOps(true);
+    try {
+      const amount = BigInt(amountTxt);
+      const totalCost = (post as any).tokenPrice && typeof (post as any).tokenPrice === 'bigint'
+        ? (post as any).tokenPrice * amount
+        : undefined;
+      const tokenAddr = u2uTokenAddress as Address;
+      if (totalCost) {
+        toast.message('Approving U2U token...');
+        await writeContract({
+          address: tokenAddr,
+          abi: ERC20_ABI as unknown as Abi,
+          functionName: 'approve',
+          args: [CONTRACT_ADDRESS, totalCost],
+        } as any);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+      await writeContract({
+        address: CONTRACT_ADDRESS as Address,
+        abi: CONTRACT_ABI as unknown as Abi,
+        functionName: 'buyPostTokens',
+        args: [post.id, amount],
+      } as any);
+      toast.success('Buy post tokens submitted');
+      window.dispatchEvent(new CustomEvent('post:updated'));
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to buy post tokens');
+    } finally {
+      setIsTokenOps(false);
+    }
+  };
+
+  const handleSellWithPostToken = async () => {
+    const hasFn = ((CONTRACT_ABI as unknown) as any[]).some((f: any) => f.name === 'sellPostWithPostToken');
+    if (!hasFn) return toast.info('Contract has no sellPostWithPostToken');
+    const priceTxt = postPriceInTokenInput.trim();
+    if (!priceTxt) return;
+    try {
+      const priceInPostToken = BigInt(priceTxt);
+      await writeContract({
+        address: CONTRACT_ADDRESS as Address,
+        abi: CONTRACT_ABI as unknown as Abi,
+        functionName: 'sellPostWithPostToken',
+        args: [post.id, priceInPostToken],
+      } as any);
+      toast.success('Post listed (post token)');
+      window.dispatchEvent(new CustomEvent('post:updated'));
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to list post with post token');
+    }
+  };
+
+  const handleBuyWithPostToken = async () => {
+    const hasFn = ((CONTRACT_ABI as unknown) as any[]).some((f: any) => f.name === 'buyPostWithPostToken');
+    if (!hasFn) return toast.info('Contract has no buyPostWithPostToken');
+    const postToken = (post as any).postToken as string | undefined;
+    const priceInPostToken = (post as any).priceInPostToken as bigint | undefined;
+    if (!postToken || !priceInPostToken) return toast.info('Post token sale not available');
+    setIsTokenOps(true);
+    try {
+      // Approve postToken to contract
+      await writeContract({
+        address: postToken as Address,
+        abi: ERC20_ABI as unknown as Abi,
+        functionName: 'approve',
+        args: [CONTRACT_ADDRESS, priceInPostToken],
+      } as any);
+      await new Promise((r) => setTimeout(r, 3000));
+      await writeContract({
+        address: CONTRACT_ADDRESS as Address,
+        abi: CONTRACT_ABI as unknown as Abi,
+        functionName: 'buyPostWithPostToken',
+        args: [post.id],
+      } as any);
+      toast.success('Purchase with post token submitted');
+      window.dispatchEvent(new CustomEvent('post:updated'));
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to buy with post token');
+    } finally {
+      setIsTokenOps(false);
     }
   };
 
@@ -384,7 +498,7 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
           </div>
           <div className="p-3 bg-[#0F0F0F] rounded-lg border border-[#00FFFF]/30 space-y-2">
             <div className="flex items-center justify-between">
-              <div className="font-orbitron text-sm text-[#00FFFF] flex items-center"><Tag className="h-4 w-4 mr-1" /> Sell</div>
+              <div className="font-orbitron text-sm text-[#00FFFF] flex items-center"><Tag className="h-4 w-4 mr-1" /> Sell (U2U)</div>
               <div className="text-xs text-gray-500">
                 {post.isForSale ? (
                   <span className="text-[#8AFF00] font-bold">FOR SALE: {typeof post.price === 'bigint' ? `${formatUnits(post.price, 18)} U2U` : '0 U2U'}</span>
@@ -403,7 +517,7 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
               />
               {isAuthor ? (
                 <Button size="sm" onClick={handleSell} className="bg-[#00FFFF] text-[#0F0F0F] font-orbitron">
-                  List
+                  List (U2U)
                 </Button>
               ) : (
                 <Button 
@@ -415,6 +529,110 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
                 >
                   <ShoppingCart className="h-4 w-4 mr-1" /> {isBuying ? 'Buying...' : (post.isForSale ? 'Buy Now' : 'Not Available')}
                 </Button>
+              )}
+            </div>
+          </div>
+          <div className="p-3 bg-[#0F0F0F] rounded-lg border border-[#FCEE09]/30 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="font-orbitron text-sm text-[#FCEE09] flex items-center"><Coins className="h-4 w-4 mr-1" /> Post Token</div>
+              <div className="text-xs text-gray-500">
+                {(post as any).postToken ? (
+                  <span className="text-[#8AFF00] font-bold">
+                    Token: {String((post as any).postToken).slice(0, 6)}...{String((post as any).postToken).slice(-4)}
+                  </span>
+                ) : (
+                  'Tokenized on create'
+                )}
+              </div>
+            </div>
+            {(post as any).postToken && (
+              <div className="text-xs text-gray-400 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono break-all">{String((post as any).postToken)}</span>
+                  <button
+                    className="px-1 py-0.5 border border-[#FCEE09]/30 rounded hover:bg-[#FCEE09]/10"
+                    onClick={() => navigator.clipboard.writeText(String((post as any).postToken))}
+                    title="Copy token address"
+                  >Copy</button>
+                  <a
+                    className="px-1 py-0.5 border border-[#FCEE09]/30 rounded hover:bg-[#FCEE09]/10"
+                    href={`https://u2uscan.xyz/address/${String((post as any).postToken)}`}
+                    target="_blank" rel="noreferrer"
+                    title="View on Explorer"
+                  >Explorer</a>
+                </div>
+                <div>
+                  Price/Token: {(post as any).tokenPrice ? `${formatUnits((post as any).tokenPrice, 18)} U2U` : 'Not listed'}
+                </div>
+                <div>
+                  Available: {(post as any).tokensForSale != null ? String((post as any).tokensForSale) : '—'}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <input
+                value={tokenPriceInput}
+                onChange={(e) => setTokenPriceInput(e.target.value.replace(/[^0-9.]/g, ''))}
+                placeholder="Token price (U2U)"
+                className="bg-[#1B1B1B] border border-[#FCEE09]/30 rounded px-2 py-1 text-sm"
+                disabled={!isAuthor}
+              />
+              <input
+                value={tokenAmountInput}
+                onChange={(e) => setTokenAmountInput(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="Amount"
+                className="bg-[#1B1B1B] border border-[#FCEE09]/30 rounded px-2 py-1 text-sm"
+              />
+            </div>
+            <div className="flex gap-2">
+              {isAuthor ? (
+                <Button size="sm" onClick={handleSetPostTokenForSale} className="bg-[#FCEE09] text-[#0F0F0F] font-orbitron">List Tokens</Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={handleBuyPostTokens}
+                  disabled={
+                    isTokenOps ||
+                    !(post as any).tokenPrice ||
+                    !((post as any).tokensForSale && ((post as any).tokensForSale as bigint) > BigInt(0))
+                  }
+                  className="bg-[#FCEE09] text-[#0F0F0F] font-orbitron disabled:opacity-50"
+                  title={
+                    !(post as any).tokenPrice
+                      ? 'Token not listed yet'
+                      : (!((post as any).tokensForSale && ((post as any).tokensForSale as bigint) > BigInt(0))
+                          ? 'No tokens available'
+                          : 'Buy tokens')
+                  }
+                >Buy Tokens</Button>
+              )}
+            </div>
+          </div>
+          <div className="p-3 bg-[#0F0F0F] rounded-lg border border-[#FF0080]/30 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="font-orbitron text-sm text-[#FF0080] flex items-center"><Tag className="h-4 w-4 mr-1" /> Sell Post w/ Tokens</div>
+              <div className="text-xs text-gray-500">
+                {(post as any).isForSaleInPostToken ? (
+                  <span className="text-[#8AFF00] font-bold">FOR SALE: {(post as any).priceInPostToken?.toString?.() || ''} post tokens</span>
+                ) : (
+                  'Not for sale in tokens'
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <input
+                value={postPriceInTokenInput}
+                onChange={(e) => setPostPriceInTokenInput(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="Amount (post tokens)"
+                className="bg-[#1B1B1B] border border-[#FF0080]/30 rounded px-2 py-1 text-sm"
+                disabled={!isAuthor}
+              />
+            </div>
+            <div className="flex gap-2">
+              {isAuthor ? (
+                <Button size="sm" onClick={handleSellWithPostToken} className="bg-[#FF0080] text-white font-orbitron">List Post w/ Tokens</Button>
+              ) : (
+                <Button size="sm" onClick={handleBuyWithPostToken} disabled={isTokenOps || !(post as any).isForSaleInPostToken} className="bg-[#FF0080] text-white font-orbitron disabled:opacity-50">Buy w/ Tokens</Button>
               )}
             </div>
           </div>

@@ -15,6 +15,9 @@ import { toast } from 'sonner';
 export function CreatePost() {
   const { address } = useAccount();
   const [content, setContent] = useState('');
+  // Defaults for new ABI (tokenized posts)
+  const defaultTokenName = 'PostToken';
+  const defaultTokenSymbol = 'PST';
   const { writeContract, data: hash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
   const { data: gasPrice } = useGasPrice();
@@ -57,7 +60,11 @@ export function CreatePost() {
     address: CONTRACT_ADDRESS as any,
     abi: CONTRACT_ABI as any,
     functionName: 'createPost',
-    args: myProfileId !== undefined ? [myProfileId, content] : undefined,
+    // New ABI: createPost(profileId, contentCID, tokenName, tokenSymbol)
+    args:
+      myProfileId !== undefined
+        ? [myProfileId, content, defaultTokenName, defaultTokenSymbol]
+        : undefined,
     value: BigInt(0),
     query: { enabled: !!content.trim() && myProfileId !== undefined },
   } as any) as any;
@@ -97,7 +104,8 @@ export function CreatePost() {
           address: CONTRACT_ADDRESS as Address,
           abi: CONTRACT_ABI as unknown as Abi,
           functionName: 'createPost',
-          args: [myProfileId, content],
+          // Pass required token params for new ABI
+          args: [myProfileId, content, defaultTokenName, defaultTokenSymbol],
           value: BigInt(0),
         } as any);
       }

@@ -9,6 +9,8 @@
 **Contract Name**: `SocialFiProfile`  
 **Network**: U2U Subnet Testnet  
 **Deployed Address**: `0x7e791c42ca37c9bebe335f2d90ca41872a28a025`  
+**Network**: U2U Solaris Mainnet  
+**Deployed Address**: `0x95691fD90c9c28898912906C19BCc6569A736762`  
 **Solidity Version**: `^0.8.30`  
 **License**: MIT
 
@@ -43,10 +45,15 @@ struct Post {
     uint256 timestamp;            // Creation time
     uint256 likeCount;            // Total likes
     uint256 commentCount;         // Total comments
-    uint256 tipAmount;            // Total tips received
-    bool isForSale;               // Listed for sale?
-    uint256 price;                // Sale price in U2U tokens
+    uint256 tipAmount;            // Total tips received (U2U ERC20)
+    bool isForSale;               // Listed for sale in U2U?
+    uint256 price;                // Sale price in U2U tokens (wei)
     bool isDeleted;               // Soft delete flag
+    address postToken;            // ERC20 token address minted for this post
+    uint256 tokenPrice;           // Price per post token (U2U, wei)
+    uint256 tokensForSale;        // Amount of post tokens on sale
+    bool isForSaleInPostToken;    // Listed for sale via post tokens?
+    uint256 priceInPostToken;     // Amount of post tokens to buy the post
 }
 
 struct Comment {
@@ -103,18 +110,20 @@ Retrieves profile data by ID.
 
 ### Post Management
 
-#### `createPost(uint256 _profileId, string _contentCID)`
-Creates a new post as an NFT.
+#### `createPost(uint256 _profileId, string _contentCID, string _tokenName, string _tokenSymbol)`
+Creates a new post as an NFT and mints an ERC20 post token for it.
 
 **Parameters**:
 - `_profileId`: Author's profile ID
 - `_contentCID`: IPFS CID of post content
+- `_tokenName`: ERC20 name for the post token (e.g., "PostToken")
+- `_tokenSymbol`: ERC20 symbol (e.g., "PST")
 
 **Requirements**:
 - Caller must own the profile
 - Mints an ERC721 NFT to the creator
 
-**Emits**: `PostCreated(uint256 postId, uint256 profileId)`
+**Emits**: `PostCreated(uint256 postId, uint256 profileId, address postToken)`
 
 ---
 
@@ -168,6 +177,29 @@ Lists a post NFT for sale.
 
 ---
 
+#### `setPostTokenForSale(uint256 _postId, uint256 _tokenPrice, uint256 _amount)`
+Lists post tokens for sale, priced in U2U.
+
+**Parameters**:
+- `_postId`: Post ID
+- `_tokenPrice`: Price per token in U2U (wei)
+- `_amount`: Number of post tokens to sell
+
+**Emits**: `PostTokenForSale(uint256 postId, uint256 tokenPrice, uint256 amount)`
+
+---
+
+#### `sellPostWithPostToken(uint256 _postId, uint256 _priceInPostToken)`
+Lists the whole post for sale payable in its post tokens.
+
+**Parameters**:
+- `_postId`: Post ID
+- `_priceInPostToken`: Amount of post tokens required
+
+**Emits**: `PostForSaleWithPostToken(uint256 postId, address postToken, uint256 priceInPostToken)`
+
+---
+
 #### `buyPost(uint256 _postId)`
 Purchases a listed post NFT.
 
@@ -189,6 +221,30 @@ Purchases a listed post NFT.
 3. Buyer: contract.buyPost(postId)
 4. Contract: u2uToken.transferFrom(buyer, seller, price)
 5. Contract: _transfer(seller, buyer, postId)
+```
+
+---
+
+#### `buyPostTokens(uint256 _postId, uint256 _amount)`
+Buys `_amount` of post tokens, priced in U2U.
+
+**Flow**:
+```
+1. Seller: setPostTokenForSale(postId, tokenPrice, amount)
+2. Buyer: u2uToken.approve(contract, tokenPrice * amount)
+3. Buyer: buyPostTokens(postId, amount)
+```
+
+---
+
+#### `buyPostWithPostToken(uint256 _postId)`
+Buys the whole post using post tokens.
+
+**Flow**:
+```
+1. Seller: sellPostWithPostToken(postId, priceInPostToken)
+2. Buyer: postToken.approve(contract, priceInPostToken)
+3. Buyer: buyPostWithPostToken(postId)
 ```
 
 ---
@@ -216,7 +272,7 @@ Retrieves comment data by ID.
 
 ---
 
-### Talent Marketplace
+### Talent Marketplace (U2U ERC20 escrow)
 
 #### `hirePlayer(uint256 _profileId, uint256 _duration, uint256 _ratePerHour)`
 Hires a player for a specified duration.
@@ -228,7 +284,7 @@ Hires a player for a specified duration.
 
 **Requirements**:
 - Cannot hire yourself
-- Must approve contract to spend `duration * ratePerHour` tokens
+- Must approve U2U token to spend `duration * ratePerHour` (in wei)
 - Payment held in escrow until completed
 
 **Emits**: `PlayerHired(uint256 hireId, uint256 profileId, address hirer, uint256 amount)`
@@ -301,19 +357,15 @@ event HireCompleted(uint256 indexed hireId, uint256 profileId);
 
 ### Prerequisites
 
-1. **U2U Testnet Wallet**
-   - Get testnet U2U from [U2U Faucet](https://faucet.uniultra.xyz/)
-   - Add U2U Testnet to MetaMask:
-     ```
-     Network Name: U2U Subnet Testnet
-     RPC URL: https://rpc-nebulas-testnet.uniultra.xyz
-     Chain ID: 2484
-     Currency: U2U
-     ```
+1. **U2U Solaris Mainnet**
+   - Network Name: U2U Solaris Mainnet
+   - RPC URL: https://rpc-mainnet.uniultra.xyz
+   - Chain ID: 39
+   - Currency: U2U
 
-2. **U2U Test Tokens**
-   - Contract requires ERC20 token for payments
-   - Deploy a test ERC20 or use existing testnet token
+2. **U2U ERC20 Token**
+   - Contract uses an ERC20 token (u2uToken()) for payments
+   - Ensure your wallet holds sufficient U2U ERC20 and U2U native (gas)
 
 ---
 
@@ -327,10 +379,10 @@ await contract.createProfile("TestUser", "QmAvatar...", "QmBio...");
 // Check: profiles[profileCount].owner === msg.sender
 ```
 
-#### 2. Create Post
+#### 2. Create Post (with post token)
 ```javascript
 const profileId = 1; // Your profile ID
-await contract.createPost(profileId, "QmPostContent...");
+await contract.createPost(profileId, "QmPostContent...", "PostToken", "PST");
 // Check: postCount should increment
 // Check: You own the NFT (ownerOf(postCount) === msg.sender)
 ```
@@ -367,7 +419,7 @@ await contract.buyPost(postId);
 ```javascript
 const targetProfileId = 2;
 const duration = 10; // hours
-const rate = ethers.parseEther("5"); // 5 U2U/hour
+const rate = ethers.parseEther("5"); // 5 U2U/hour (ERC20)
 const totalCost = duration * rate;
 
 // Approve + Hire
@@ -378,7 +430,7 @@ await contract.hirePlayer(targetProfileId, duration, rate);
 // Check: hires[hireCount].completed === false
 
 // Complete hire (as profile owner)
-await contract.completeHire(hireCount);
+await contract.completeHire(hireCount, streamerAddress);
 
 // Check: Player's totalEarned increased
 // Check: hires[hireCount].completed === true

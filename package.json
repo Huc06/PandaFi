@@ -1,6 +1,6 @@
 {
-  "name": "cb-nextjs-shadcn-template",
-  "version": "0.1.0",
+  "name": "PandaFi",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",

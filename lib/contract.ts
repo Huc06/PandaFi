@@ -1,7 +1,16 @@
+import SocialFiProfile from "@/smartcontract/SocialFiProfile.json";
+import OpenZeppelinPostToken from "@/smartcontract/OpenZeppelinPostToken.json";
+import type { Abi } from "viem";
+
 export const CONTRACT_ADDRESS =
   "0x95691fD90c9c28898912906C19BCc6569A736762" as const;
 
-export const CONTRACT_ABI = [
+export const CONTRACT_ABI: Abi = SocialFiProfile.abi as unknown as Abi;
+
+export const POST_TOKEN_ABI: Abi = OpenZeppelinPostToken.abi as unknown as Abi;
+
+
+export const CONTRACT_ABI_OLD = [
   {
     inputs: [{ internalType: "address", name: "_u2uToken", type: "address" }],
     stateMutability: "nonpayable",
