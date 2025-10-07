@@ -183,6 +183,7 @@ PandaFiContract (ERC721)
 4. **Messages** - P2P encrypted chat
 5. **Hires** - Active and completed talent contracts
 6. **Trending** - Viral content discovery
+7. **Live** - Embed and watch X (Twitter) livestreams/tweets
 
 ---
 
@@ -278,6 +279,15 @@ Leaderboard → Select player → Click "Hire"
 Messages → Select conversation → Type message
 → Real-time delivery to recipient's wallet
 ```
+
+### 6. Live Stream Embed (X/Twitter)
+```
+Live → Paste X URL (tweet or /i/broadcasts/...) → Load
+or open directly: /live?url=YOUR_X_URL
+```
+Notes:
+- Tweet URLs are rendered via X widgets (dark theme).
+- Broadcast URLs are embedded via twitframe to avoid X iframe restrictions.
 
 ---
 

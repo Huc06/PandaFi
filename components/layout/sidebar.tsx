@@ -1,18 +1,27 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, Trophy, MessageSquare, User, Briefcase, TrendingUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Home,
+  Trophy,
+  MessageSquare,
+  User,
+  Briefcase,
+  TrendingUp,
+  Video,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: '/dashboard', icon: Home, label: 'Feed' },
-  { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-  { href: '/messages', icon: MessageSquare, label: 'Messages' },
-  { href: '/profile', icon: User, label: 'Profile' },
-  { href: '/hires', icon: Briefcase, label: 'Hires' },
-  { href: '/trending', icon: TrendingUp, label: 'Trending' },
+  { href: "/dashboard", icon: Home, label: "Feed" },
+  { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
+  { href: "/live", icon: Video, label: "Live" },
+  { href: "/messages", icon: MessageSquare, label: "Messages" },
+  { href: "/profile", icon: User, label: "Profile" },
+  { href: "/hires", icon: Briefcase, label: "Hires" },
+  { href: "/trending", icon: TrendingUp, label: "Trending" },
 ];
 
 export function Sidebar() {
@@ -24,16 +33,16 @@ export function Sidebar() {
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
-          
+
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center space-x-3 px-4 py-3 rounded-lg font-orbitron text-sm font-medium transition-all',
+                "flex items-center space-x-3 px-4 py-3 rounded-lg font-orbitron text-sm font-medium transition-all",
                 isActive
-                  ? 'bg-[#FF0080]/20 text-[#FF0080] border border-[#FF0080]/50 border-glow-pink'
-                  : 'text-gray-400 hover:bg-[#00FFFF]/10 hover:text-[#00FFFF] hover:border-[#00FFFF]/30 border border-transparent'
+                  ? "bg-[#FF0080]/20 text-[#FF0080] border border-[#FF0080]/50 border-glow-pink"
+                  : "text-gray-400 hover:bg-[#00FFFF]/10 hover:text-[#00FFFF] hover:border-[#00FFFF]/30 border border-transparent"
               )}
             >
               <Icon className="h-5 w-5" />
