@@ -31,7 +31,7 @@ export default function LivePage() {
                 <span className="glow-cyan">LIVE</span>{' '}
                 <span className="glow-pink">STREAM</span>
               </h1>
-              <p className="text-gray-400 text-sm">Paste your X (Twitter) live URL, or pass it via ?url=...</p>
+              <p className="text-gray-400 text-sm">Paste your X (Twitter) live URL, YouTube video, or pass it via ?url=...</p>
             </div>
 
             <Card className="bg-[#1B1B1B] border-[#00FFFF]/30">
@@ -40,7 +40,7 @@ export default function LivePage() {
                   <Input
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://x.com/i/broadcasts/... or https://x.com/username/status/..."
+                    placeholder="https://x.com/i/broadcasts/... or https://x.com/username/status/... or https://youtube.com/watch?v=..."
                     className="bg-[#0F0F0F] border-[#00FFFF]/30 focus:border-[#00FFFF] text-white"
                   />
                   <Button onClick={() => setUrl(url)} className="bg-gradient-to-r from-[#FF0080] to-[#00FFFF] text-white font-orbitron">Load</Button>
@@ -51,7 +51,7 @@ export default function LivePage() {
                     <XEmbed url={url} />
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-500">Enter a valid X URL to embed the stream.</p>
+                  <p className="text-xs text-gray-500">Enter a valid X or YouTube URL to embed the content.</p>
                 )}
               </CardContent>
             </Card>
