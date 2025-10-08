@@ -67,6 +67,8 @@ Traditional social media platforms:
 
 ### 📊 Social Feed & Discovery
 - Neural feed with real-time updates
+- **Auto-Embed Content**: Automatically detect and embed YouTube videos and X (Twitter) content from post text
+- **Social Sharing**: Share posts to Twitter, LinkedIn, Facebook, or copy direct links
 - Trending posts algorithm
 - Like, comment, and share content
 - Profile-based content filtering
@@ -81,7 +83,7 @@ Traditional social media platforms:
 ┌─────────────┐         ┌──────────────┐         ┌─────────────┐
 │             │ Web3    │              │ JSON-RPC│             │
 │  Frontend   │◄───────►│ Wagmi/Viem   │◄───────►│ U2U Network │
-│  (Next.js)  │         │              │         │  Testnet    │
+│  (Next.js)  │         │              │         │  Mainnet    │
 │             │         └──────────────┘         │             │
 └─────┬───────┘                                  └──────┬──────┘
       │                                                  │
@@ -92,8 +94,8 @@ Traditional social media platforms:
 │             │                              │                 │
 │   PubNub    │                              │ Smart Contract  │
 │  Real-time  │                              │   (ERC721 +     │
-│  Messaging  │                              │    Logic)       │
-│             │                              │                 │
+│  Messaging  │                              │    ERC20 +      │
+│             │                              │    Logic)       │
 └─────────────┘                              └─────────────────┘
       │                                                  │
       │                                                  │
@@ -102,6 +104,15 @@ Traditional social media platforms:
 │ Local       │                              │ IPFS            │
 │ Storage     │                              │ (Content)       │
 └─────────────┘                              └─────────────────┘
+      │                                                  │
+      │ External APIs                                   │
+      ▼                                                  ▼
+┌─────────────┐                              ┌─────────────────┐
+│             │                              │                 │
+│ YouTube/X   │                              │ Post Tokens     │
+│  Embedding  │                              │ (ERC20)         │
+│             │                              │                 │
+└─────────────┘                              └─────────────────┘
 ```
 
 ### Data Flow: Post Creation
@@ -109,13 +120,39 @@ Traditional social media platforms:
 ```
 User Input → Frontend Validation → Get ProfileID
       ↓
-Estimate Gas → Display Fee → User Confirms
+Auto-detect URLs → Prepare Embed Data → Estimate Gas
+      ↓
+Display Fee + Preview → User Confirms
       ↓
 Sign Transaction → Submit to U2U Network
       ↓
 Contract Execution → Emit Event → Update State
       ↓
 Frontend Listens → Update UI → Show Toast
+      ↓
+Auto-embed Content → Social Share Options
+```
+
+### Data Flow: Content Monetization
+
+```
+Post Created → Token Generation → Set Price
+      ↓
+User Lists for Sale → ERC20 Approval → Contract Update
+      ↓
+Buyer Discovers → Approve Payment → Purchase
+      ↓
+Revenue Distribution → Creator Earnings → Platform Fee
+```
+
+### Data Flow: Social Sharing
+
+```
+User Clicks Share → Modal Opens → Platform Selection
+      ↓
+Generate Share URL → Open Social Platform → Pre-fill Content
+      ↓
+User Shares → Track Engagement → Update Analytics
 ```
 
 ### Tech Stack
@@ -127,12 +164,15 @@ Frontend Listens → Update UI → Show Toast
 - 🔗 **Wagmi v2** - React Hooks for Ethereum
 - 🦄 **RainbowKit** - Wallet connection UI
 - 📡 **PubNub** - Real-time messaging
+- 🎥 **YouTube/X Embed** - Auto-embed content detection
+- 📱 **Web Share API** - Native social sharing
 
 **Smart Contracts**
 - 💎 **Solidity 0.8.20** - Smart contract language
 - 🏛️ **ERC721** - NFT profile standard
-- 💵 **ERC20** - U2U token integration
+- 💵 **ERC20** - U2U token + Post token integration
 - 🔒 **OpenZeppelin** - Audited contract libraries
+- 🎯 **Multi-token Support** - Post-specific ERC20 tokens
 
 **Blockchain**
 - 🌌 **U2U Solaris Mainnet** (ChainID: 39)
@@ -149,21 +189,48 @@ PandaFiContract (ERC721)
 │   └── getTopPlayers() - Leaderboard query
 │
 ├── Content System
-│   ├── createPost() - Publish content
+│   ├── createPost() - Publish content (with token name/symbol)
 │   ├── likePost() - Engage with posts
 │   ├── addComment() - Add comments
 │   ├── tipPost() - Send tips (ERC20)
-│   ├── sellPost() - List for sale
-│   └── buyPost() - Purchase content
+│   ├── sellPost() - List for sale (U2U)
+│   └── buyPost() - Purchase content (U2U)
+│
+├── Post Token System (ERC20)
+│   ├── setPostTokenForSale() - List post tokens
+│   ├── buyPostTokens() - Buy individual tokens
+│   ├── sellPostWithPostToken() - Sell post for its tokens
+│   └── buyPostWithPostToken() - Buy post with its tokens
 │
 └── Talent Marketplace
-    ├── hirePlayer() - Create hire contract
+    ├── hirePlayer() - Create hire contract (ERC20)
     ├── completeHire() - Finalize hire
     └── getHire() - Query hire details
 ```
 
 **Contract Address**: `0x95691fD90c9c28898912906C19BCc6569A736762`
 **Payment Token (u2uToken)**: resolved on-chain via `u2uToken()`
+
+### User Journey Flow
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Connect   │───►│   Create    │───►│   Create    │
+│   Wallet    │    │   Profile   │    │   Content   │
+└─────────────┘    └─────────────┘    └─────────────┘
+                                              │
+                                              ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Social    │◄───│   Monetize  │◄───│   Auto-     │
+│   Share     │    │   Content   │    │   Embed     │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  Platform   │    │   Earn      │    │  YouTube/   │
+│  Sharing    │    │   Revenue   │    │  X Content  │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
 
 ---
 
@@ -183,7 +250,7 @@ PandaFiContract (ERC721)
 4. **Messages** - P2P encrypted chat
 5. **Hires** - Active and completed talent contracts
 6. **Trending** - Viral content discovery
-7. **Live** - Embed and watch X (Twitter) livestreams/tweets
+7. **Live** - Embed and watch X (Twitter) livestreams/tweets and YouTube videos
 
 ---
 
@@ -280,14 +347,18 @@ Messages → Select conversation → Type message
 → Real-time delivery to recipient's wallet
 ```
 
-### 6. Live Stream Embed (X/Twitter)
+### 6. Live Stream Embed (X/Twitter & YouTube)
 ```
-Live → Paste X URL (tweet or /i/broadcasts/...) → Load
-or open directly: /live?url=YOUR_X_URL
+Live → Paste X URL (tweet or /i/broadcasts/...) or YouTube URL → Load
+or open directly: /live?url=YOUR_URL
+
+Auto-embed in posts: Just paste YouTube or X URLs in your post content!
 ```
 Notes:
 - Tweet URLs are rendered via X widgets (dark theme).
 - Broadcast URLs are embedded via twitframe to avoid X iframe restrictions.
+- YouTube videos are embedded with responsive 16:9 aspect ratio.
+- Auto-embed works in post content - just paste any supported URL!
 
 ---
 
@@ -401,13 +472,32 @@ event HireCreated(uint256 hireId, uint256 profileId, address hirer)
 
 ### Token Economy Flow
 ```
-User Actions → Earn PANDA Tokens
+Content Creation → Post Token Generation
       ↓
-Stake/Spend PANDA → Premium Features
+User Engagement → U2U Token Tips
       ↓
-Platform Growth → Token Value ↑
+Content Monetization → Revenue Distribution
+      ↓
+Social Sharing → Platform Growth
       ↓
 More Users → More Activity → More Rewards
+      ↓
+Post Token Trading → Secondary Market
+```
+
+### Multi-Token Ecosystem
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   U2U       │    │   Post      │    │   Social    │
+│   Tokens    │    │   Tokens    │    │   Sharing   │
+│   (Main)    │    │   (ERC20)   │    │   (Growth)  │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Tips &    │    │   Content   │    │   Viral     │
+│   Payments  │    │   Trading   │    │   Discovery │
+└─────────────┘    └─────────────┘    └─────────────┘
 ```
 
 ---

@@ -13,6 +13,7 @@ import type { Address, Abi } from 'viem';
 import { parseUnits, formatUnits } from 'viem';
 import type { Comment } from '@/lib/types';
 import { toast } from 'sonner';
+import { XEmbed } from '@/components/x-embed';
 
 const ERC20_ABI = [
   {
@@ -44,6 +45,34 @@ interface PostCardProps {
   onDelete?: () => void;
 }
 
+// Function to detect and extract URLs from text
+const extractUrls = (text: string): string[] => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.match(urlRegex) || [];
+};
+
+// Function to check if URL is embeddable
+const isEmbeddableUrl = (url: string): boolean => {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    
+    // YouTube URLs
+    if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+      return true;
+    }
+    
+    // X (Twitter) URLs
+    if (hostname.includes('x.com') || hostname.includes('twitter.com')) {
+      return true;
+    }
+    
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: PostCardProps) {
   const { address } = useAccount();
   const [liked, setLiked] = useState(false);
@@ -59,8 +88,61 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
   const [showFetchedOnce, setShowFetchedOnce] = useState(false);
   const [isTipping, setIsTipping] = useState(false);
   const [isBuying, setIsBuying] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const authorAddr = typeof post.author === 'string' ? post.author : '';
   const isAuthor = !!address && !!authorAddr && address.toLowerCase() === authorAddr.toLowerCase();
+
+  // Share functions
+  const handleShare = () => {
+    setShowShareModal(true);
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied to clipboard!');
+    } catch (err) {
+      toast.error('Failed to copy to clipboard');
+    }
+  };
+
+  const shareToTwitter = () => {
+    const text = `Check out this post on PandaFi!`;
+    const url = `${window.location.origin}/dashboard?post=${post.id}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.open(twitterUrl, '_blank');
+  };
+
+  const shareToLinkedIn = () => {
+    const text = `Check out this post on PandaFi!`;
+    const url = `${window.location.origin}/dashboard?post=${post.id}`;
+    const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+    window.open(linkedinUrl, '_blank');
+  };
+
+  const shareToFacebook = () => {
+    const url = `${window.location.origin}/dashboard?post=${post.id}`;
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    window.open(facebookUrl, '_blank');
+  };
+
+  const shareViaWebAPI = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'PandaFi Post',
+          text: 'Check out this post on PandaFi!',
+          url: `${window.location.origin}/dashboard?post=${post.id}`,
+        });
+      } catch (err) {
+        // User cancelled or error occurred
+      }
+    } else {
+      // Fallback to copy link
+      const url = `${window.location.origin}/dashboard?post=${post.id}`;
+      await copyToClipboard(url);
+    }
+  };
   const likeCountValue = typeof post.likeCount === 'bigint' ? Number(post.likeCount) : Number(post.likeCount ?? 0);
   const displayName = authorName && authorName !== 'Anonymous'
     ? authorName
@@ -431,6 +513,25 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
               <p className="text-sm text-gray-300 leading-relaxed">
                 {post.contentCID}
               </p>
+              
+              {/* Auto-embed URLs */}
+              {(() => {
+                const urls = extractUrls(post.contentCID);
+                const embeddableUrls = urls.filter(isEmbeddableUrl);
+                
+                if (embeddableUrls.length > 0) {
+                  return (
+                    <div className="mt-4 space-y-4">
+                      {embeddableUrls.map((url, index) => (
+                        <div key={index} className="rounded-lg overflow-hidden border border-[#00FFFF]/20">
+                          <XEmbed url={url} align="center" />
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           </div>
         </div>
@@ -457,7 +558,7 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
               {commentCountText}
             </Button>
 
-            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-[#8AFF00] font-orbitron" onClick={() => toast.info('Tips/Sell not supported by contract yet')}>
+            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-[#8AFF00] font-orbitron" onClick={handleShare}>
               <Share2 className="h-4 w-4 mr-2" />
               Share
             </Button>
@@ -667,6 +768,65 @@ export function PostCard({ post, authorName = 'Anonymous', onLike, onDelete }: P
             <div className="flex justify-end">
               <Button size="sm" className="bg-gradient-to-r from-[#FF0080] to-[#00FFFF] text-white font-orbitron" onClick={handleAddComment}>
                 Post Comment
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#1B1B1B] border border-[#00FFFF]/30 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-orbitron text-[#00FFFF] mb-4">Share Post</h3>
+            
+            <div className="space-y-3">
+              <Button
+                onClick={shareViaWebAPI}
+                className="w-full bg-gradient-to-r from-[#FF0080] to-[#00FFFF] text-white font-orbitron"
+              >
+                Share via Device
+              </Button>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  onClick={shareToTwitter}
+                  variant="outline"
+                  className="border-[#1DA1F2] text-[#1DA1F2] hover:bg-[#1DA1F2] hover:text-white font-orbitron"
+                >
+                  Twitter
+                </Button>
+                <Button
+                  onClick={shareToLinkedIn}
+                  variant="outline"
+                  className="border-[#0077B5] text-[#0077B5] hover:bg-[#0077B5] hover:text-white font-orbitron"
+                >
+                  LinkedIn
+                </Button>
+                <Button
+                  onClick={shareToFacebook}
+                  variant="outline"
+                  className="border-[#4267B2] text-[#4267B2] hover:bg-[#4267B2] hover:text-white font-orbitron"
+                >
+                  Facebook
+                </Button>
+                <Button
+                  onClick={() => copyToClipboard(`${window.location.origin}/dashboard?post=${post.id}`)}
+                  variant="outline"
+                  className="border-[#8AFF00] text-[#8AFF00] hover:bg-[#8AFF00] hover:text-black font-orbitron"
+                >
+                  Copy Link
+                </Button>
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-[#00FFFF]/20">
+              <Button
+                onClick={() => setShowShareModal(false)}
+                variant="ghost"
+                className="w-full text-gray-400 hover:text-white font-orbitron"
+              >
+                Close
               </Button>
             </div>
           </div>
