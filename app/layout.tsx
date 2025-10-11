@@ -21,17 +21,6 @@ export const metadata: Metadata = {
         "A decentralized social finance platform with Web3 integration",
     keywords:
         "no-code, app builder, conversation-driven development, socialfi, web3, blockchain, dapp",
-    openGraph: {
-        title: "SocialFi dApp",
-        description:
-            "A decentralized social finance platform with Web3 integration",
-    },
-    twitter: {
-        card: "summary_large_image",
-        title: "SocialFi dApp",
-        description:
-            "A decentralized social finance platform with Web3 integration",
-    },
 };
 
 export default function RootLayout({
