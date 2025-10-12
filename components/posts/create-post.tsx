@@ -83,6 +83,7 @@ export function CreatePost() {
   useEffect(() => {
     if (isSuccess) {
       window.dispatchEvent(new CustomEvent('post:created'));
+      setContent('');
     }
   }, [isSuccess]);
 
@@ -111,7 +112,6 @@ export function CreatePost() {
       }
       
       toast.success('Post submitted! Waiting for confirmation...');
-      setContent('');
     } catch (error) {
       toast.error('Failed to create post');
       console.error(error);
