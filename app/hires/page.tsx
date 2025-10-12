@@ -51,20 +51,22 @@ export default function HiresPage() {
       .map((res, idx) => {
         if (res && res.status === 'success') {
           const r = res.result as any;
-          console.log(`✅ Hire ${idx + 1}:`, r);
-          return {
-            id: r.id as bigint,
-            profileId: r.profileId as bigint,
-            hirer: r.hirer as string,
-            duration: r.duration as bigint,
-            amount: r.amount as bigint,
-            createdAt: r.createdAt as bigint,
-            completed: r.completed as boolean,
-          };
-        } else {
-          console.log(`❌ Failed hire ${idx + 1}:`, res);
-          return undefined;
+          // Defensive check for result and its id
+          if (r && typeof r.id !== 'undefined') {
+            console.log(`✅ Hire ${idx + 1}:`, r);
+            return {
+              id: r.id as bigint,
+              profileId: r.profileId as bigint,
+              hirer: r.hirer as string,
+              duration: r.duration as bigint,
+              amount: r.amount as bigint,
+              createdAt: r.createdAt as bigint,
+              completed: r.completed as boolean,
+            };
+          }
         }
+        console.log(`❌ Failed hire ${idx + 1}:`, res);
+        return undefined;
       })
       .filter(Boolean);
     console.log('🎯 Mapped hires:', mapped);
