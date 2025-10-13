@@ -11,6 +11,7 @@ import {
   Briefcase,
   TrendingUp,
   Video,
+  Tv,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ const navItems = [
   { href: "/dashboard", icon: Home, label: "Feed" },
   { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
   { href: "/live", icon: Video, label: "Live" },
+  { href: "/tv", icon: Tv, label: "TV" },
   { href: "/messages", icon: MessageSquare, label: "Messages" },
   { href: "/profile", icon: User, label: "Profile" },
   { href: "/hires", icon: Briefcase, label: "Hires" },

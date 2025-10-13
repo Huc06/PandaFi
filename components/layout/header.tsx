@@ -37,6 +37,12 @@ export function Header() {
               LEADERBOARD
             </Link>
             <Link 
+              href="/tv" 
+              className="font-orbitron text-sm font-medium hover:text-[#8AFF00] transition-colors"
+            >
+              TV
+            </Link>
+            <Link 
               href="/messages" 
               className="font-orbitron text-sm font-medium hover:text-[#8AFF00] transition-colors"
             >
