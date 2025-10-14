@@ -36,6 +36,16 @@ function FeatureSimulator() {
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const pubnubRef = useRef<PubNub | null>(null);
+  const myUuidRef = useRef<string>(crypto.randomUUID());
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+  const [webrtcReady, setWebrtcReady] = useState(false);
+  const [signalReady, setSignalReady] = useState(false);
+  const [signalingInfo, setSignalingInfo] = useState<string>('idle');
 
   useEffect(() => {
     // Simulate thousands of users online
@@ -59,7 +69,10 @@ function FeatureSimulator() {
         }
         setWebrtcReady(true);
       })
-      .catch(() => setWebrtcReady(false));
+      .catch((err) => {
+        setCameraError(typeof err?.message === 'string' ? err.message : 'Camera permission denied');
+        setWebrtcReady(false);
+      });
     return () => {
       stopped = true;
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -234,7 +247,7 @@ function FeatureSimulator() {
   };
 
   const handleDisconnect = () => {
-    stopCamera();
+    // Stop only peer connection; keep camera for quick reconnect
     setConnected(false);
     setSessionStart(null);
     setSessionSeconds(0);
@@ -474,5 +487,3 @@ export default function TVPage() {
     </div>
   );
 }
-
-
