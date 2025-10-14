@@ -33,18 +33,9 @@ function FeatureSimulator() {
   const [translationOn, setTranslationOn] = useState(true);
   const [inputText, setInputText] = useState('Hello! Nice to meet you.');
   const [outputText, setOutputText] = useState('Hello! Nice to meet you.');
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const pubnubRef = useRef<PubNub | null>(null);
-  const myUuidRef = useRef<string>(crypto.randomUUID());
-  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
-  const [webrtcReady, setWebrtcReady] = useState(false);
-  const [signalReady, setSignalReady] = useState(false);
-  const [signalingInfo, setSignalingInfo] = useState<string>('idle');
 
   useEffect(() => {
     // Simulate thousands of users online
@@ -243,11 +234,27 @@ function FeatureSimulator() {
   };
 
   const handleDisconnect = () => {
+    stopCamera();
     setConnected(false);
     setSessionStart(null);
     setSessionSeconds(0);
     pcRef.current?.close();
     pcRef.current = null;
+  };
+
+  const handleNextPartner = () => {
+    // Don't stop the camera, just simulate finding a new partner.
+    setConnected(false);
+    setSessionStart(null);
+    setSessionSeconds(0);
+    setConnecting(true);
+
+    // Simulate finding a new partner
+    setTimeout(() => {
+      setConnecting(false);
+      setConnected(true);
+      setSessionStart(Date.now());
+    }, 600); // Same delay as before
   };
 
   const handleTranslate = () => {
