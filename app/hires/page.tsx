@@ -75,10 +75,11 @@ export default function HiresPage() {
                             id: r[0] as bigint,
                             profileId: r[1] as bigint,
                             hirer: r[2] as string,
-                            duration: r[3] as bigint,
-                            amount: r[4] as bigint,
-                            createdAt: r[5] as bigint,
-                            completed: r[6] as boolean,
+                            owner: r[3] as string,
+                            duration: r[4] as bigint,
+                            amount: r[5] as bigint,
+                            createdAt: r[6] as bigint,
+                            completed: r[7] as boolean,
                         };
                     }
                 }
@@ -95,7 +96,7 @@ export default function HiresPage() {
     const myHires = useMemo(() => {
         if (!address) return [];
         return hires.filter(
-            (h) => h.hirer.toLowerCase() === address.toLowerCase()
+            (h) => h.owner.toLowerCase() === address.toLowerCase()
         );
     }, [hires, address]);
 
@@ -249,7 +250,7 @@ export default function HiresPage() {
                                                                     {hire.id.toString()}
                                                                 </p>
                                                                 <p className="text-xs text-gray-500 font-mono">
-                                                                    By{" "}
+                                                                    Hired{" "}
                                                                     {hire.hirer.slice(
                                                                         0,
                                                                         6
@@ -380,7 +381,7 @@ export default function HiresPage() {
                                                             {hire.id.toString()}
                                                         </p>
                                                         <p className="text-xs text-gray-500 font-mono">
-                                                            By{" "}
+                                                            Hired{" "}
                                                             {hire.hirer.slice(
                                                                 0,
                                                                 6
