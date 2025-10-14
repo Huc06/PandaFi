@@ -35,6 +35,7 @@ export interface Hire {
   id: bigint;
   profileId: bigint;
   hirer: string;
+  owner: string;
   duration: bigint;
   amount: bigint;
   createdAt: bigint;
